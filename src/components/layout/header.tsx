@@ -1,6 +1,7 @@
 'use client';
 
 import { Bell, ArrowUpRight, User, Building2, PanelLeftClose, PanelLeftOpen } from 'lucide-react';
+import { usePathname } from 'next/navigation';
 
 interface HeaderProps {
   isSidebarOpen: boolean;
@@ -8,6 +9,9 @@ interface HeaderProps {
 }
 
 export function Header({ isSidebarOpen, onToggleSidebar }: HeaderProps) {
+  const pathname = usePathname();
+  const isInventoryArea = pathname.startsWith('/inventory');
+
   return (
     <header className="h-16 border-b border-slate-200 bg-white/95 backdrop-blur-md px-6 flex items-center justify-between sticky top-0 z-20 shadow-xs">
       {/* Brand Location Title */}
@@ -25,20 +29,26 @@ export function Header({ isSidebarOpen, onToggleSidebar }: HeaderProps) {
         </button>
         <div className="flex items-center gap-2.5 bg-emerald-50/80 border border-emerald-200/80 px-3 py-1.5 rounded-xl">
           <Building2 className="w-4 h-4 text-[#0F4C3A]" />
-          <span className="text-xs font-bold text-[#0F4C3A]">현대백화점 더현대 서울 (The Hyundai Seoul)</span>
-          <span className="px-1.5 py-0.5 rounded text-[10px] bg-[#0F4C3A] text-white font-semibold">단일관제</span>
+          <span className="text-xs font-bold text-[#0F4C3A]">{isInventoryArea ? '현대그룹 계열사 통합재고' : '현대백화점 더현대 서울 (The Hyundai Seoul)'}</span>
+          <span className="px-1.5 py-0.5 rounded text-[10px] bg-[#0F4C3A] text-white font-semibold">{isInventoryArea ? '통합관제' : '단일관제'}</span>
         </div>
       </div>
 
       {/* User & Global Actions */}
       <div className="flex items-center gap-4">
-        <a
-          href="/strategy/history"
-          className="hidden md:flex items-center gap-1.5 text-xs text-[#0F4C3A] bg-emerald-50 border border-emerald-200 px-3 py-1.5 rounded-md font-semibold hover:bg-emerald-100/80 transition-all"
-        >
-          <span>더현대 서울 승인 전략 시뮬레이션</span>
-          <ArrowUpRight className="w-3.5 h-3.5" />
-        </a>
+        {isInventoryArea ? (
+          <div className="hidden md:flex items-center gap-1.5 text-xs text-[#0F4C3A] bg-emerald-50 border border-emerald-200 px-3 py-1.5 rounded-md font-semibold">
+            <span>3개 계열사 · SKU 기준 통합</span>
+          </div>
+        ) : (
+          <a
+            href="/strategy/history"
+            className="hidden md:flex items-center gap-1.5 text-xs text-[#0F4C3A] bg-emerald-50 border border-emerald-200 px-3 py-1.5 rounded-md font-semibold hover:bg-emerald-100/80 transition-all"
+          >
+            <span>더현대 서울 승인 전략 시뮬레이션</span>
+            <ArrowUpRight className="w-3.5 h-3.5" />
+          </a>
+        )}
 
         <button className="relative p-2 rounded-lg text-slate-500 hover:text-slate-800 hover:bg-slate-100 transition-all cursor-pointer">
           <Bell className="w-4 h-4" />
@@ -51,7 +61,7 @@ export function Header({ isSidebarOpen, onToggleSidebar }: HeaderProps) {
           </div>
           <div className="text-left hidden sm:block">
             <p className="text-xs font-semibold text-slate-800 leading-tight">김영만 수석 MD</p>
-            <p className="text-[10px] text-slate-500">더현대 서울 총괄 재고전략</p>
+            <p className="text-[10px] text-slate-500">{isInventoryArea ? '그룹 통합재고 운영' : '더현대 서울 총괄 재고전략'}</p>
           </div>
         </div>
       </div>

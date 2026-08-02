@@ -13,7 +13,7 @@ function RiskRedirectContent() {
 
   return (
     <div className="p-12 text-center text-xs text-slate-500 font-medium">
-      더현대 서울 위험(악성) 재고 관제 화면으로 이동 중입니다...
+      그룹 위험 SKU 관제 화면으로 이동 중입니다...
     </div>
   );
 }

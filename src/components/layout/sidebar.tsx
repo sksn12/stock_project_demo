@@ -29,6 +29,7 @@ interface SidebarProps {
 
 export function Sidebar({ isOpen, onClose }: SidebarProps) {
   const pathname = usePathname();
+  const isInventoryArea = pathname.startsWith('/inventory');
 
   return (
     <aside
@@ -47,19 +48,19 @@ export function Sidebar({ isOpen, onClose }: SidebarProps) {
             </div>
             <div className={isOpen ? 'block' : 'hidden'}>
               <h1 className="font-bold text-sm tracking-tight text-slate-900 flex items-center gap-1.5">
-                THE HYUNDAI <span className="text-[#9E7C3B] text-xs font-semibold">SEOUL</span>
+                HYUNDAI <span className="text-[#9E7C3B] text-xs font-semibold">{isInventoryArea ? 'GROUP' : 'SEOUL'}</span>
               </h1>
-              <p className="text-[11px] text-slate-500 font-medium">재고 수익 최적화 타워</p>
+              <p className="text-[11px] text-slate-500 font-medium">{isInventoryArea ? '계열사 통합재고 허브' : '재고 수익 최적화 타워'}</p>
             </div>
           </div>
         </div>
 
         {/* Department Info */}
-        <div className={`mx-3 my-3 rounded-lg bg-emerald-50/60 border border-emerald-100 flex items-center text-xs text-slate-700 ${isOpen ? 'gap-2.5 p-2.5' : 'justify-center p-2'}`} title={isOpen ? undefined : '더현대 서울 재고전략팀'}>
+        <div className={`mx-3 my-3 rounded-lg bg-emerald-50/60 border border-emerald-100 flex items-center text-xs text-slate-700 ${isOpen ? 'gap-2.5 p-2.5' : 'justify-center p-2'}`} title={isOpen ? undefined : (isInventoryArea ? '그룹 통합재고 관제' : '더현대 서울 재고전략팀')}>
           <Building2 className="w-4 h-4 text-[#0F4C3A]" />
           <div className={isOpen ? 'overflow-hidden' : 'hidden'}>
-            <p className="font-semibold text-[#0F4C3A] truncate">더현대 서울 재고전략팀</p>
-            <p className="text-[10px] text-slate-500">2F·3F·B1·1F 전관 관제</p>
+            <p className="font-semibold text-[#0F4C3A] truncate">{isInventoryArea ? '그룹 통합재고 관제' : '더현대 서울 재고전략팀'}</p>
+            <p className="text-[10px] text-slate-500">{isInventoryArea ? '그린푸드·웰니스·리바트' : '2F·3F·B1·1F 전관 관제'}</p>
           </div>
         </div>
 
@@ -101,11 +102,11 @@ export function Sidebar({ isOpen, onClose }: SidebarProps) {
         </nav>
       </div>
 
-      <div className={`m-3 rounded-lg bg-slate-50 border border-slate-200 text-[11px] text-slate-500 flex items-center ${isOpen ? 'gap-2 p-3' : 'justify-center p-2'}`} title={isOpen ? undefined : '더현대 서울 전용 관제'}>
+      <div className={`m-3 rounded-lg bg-slate-50 border border-slate-200 text-[11px] text-slate-500 flex items-center ${isOpen ? 'gap-2 p-3' : 'justify-center p-2'}`} title={isOpen ? undefined : (isInventoryArea ? '통합 데이터 관제' : '더현대 서울 전용 관제')}>
         <ShieldCheck className="w-4 h-4 text-emerald-600 shrink-0" />
         <div className={isOpen ? 'block' : 'hidden'}>
-          <p className="text-slate-800 font-semibold text-[11px]">더현대 서울 전용 관제</p>
-          <p className="text-[10px] text-slate-400">실시간 직매입 시뮬레이션</p>
+          <p className="text-slate-800 font-semibold text-[11px]">{isInventoryArea ? '통합 데이터 관제' : '더현대 서울 전용 관제'}</p>
+          <p className="text-[10px] text-slate-400">{isInventoryArea ? '상품·SKU 표준화 조회' : '실시간 직매입 시뮬레이션'}</p>
         </div>
       </div>
     </aside>
