@@ -1,3 +1,4 @@
+import { Suspense } from "react";
 import StrategyDetailClient from "./strategy-detail-client";
 
 export function generateStaticParams() {
@@ -15,5 +16,9 @@ export function generateStaticParams() {
 }
 
 export default function StrategyDetailPage() {
-  return <StrategyDetailClient />;
+  return (
+    <Suspense fallback={<div className="p-8 text-center text-slate-500">AI 전략 비교 화면을 불러오는 중...</div>}>
+      <StrategyDetailClient />
+    </Suspense>
+  );
 }

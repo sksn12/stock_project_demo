@@ -74,7 +74,7 @@ export interface FallbackStep {
 export const SIMULATION_OPTIONS: SimulationOption[] = [
   {
     id: 'OPT-PROFIT-1', type: 'PURE_PROFIT', categoryLabel: '순마진 극대화', rankLabel: '1안 (최우선 추천)',
-    name: '타겟 15% 할인 + 현대 H.Point 5% 적립', targetChannel: '더현대 서울 2F 팝업 라운지 & 더현대 닷컴 큐레이션',
+    name: 'Hmall 타겟 15% 할인 + H.Point 5% 적립', targetChannel: 'Hmall 개인화 추천 기획전',
     discountRate: 15, expectedSalesQty: 128, expectedRevenue: 70720000, expectedNetContributionMargin: 29120000,
     savedDisposalCost: 5760000, liquidationDays: 12, confidenceScore: 92,
     reasoning: '타겟 할인으로 마진을 방어하면서 이월 악성재고를 12일 내 소진하는 구도입니다.',
@@ -82,7 +82,7 @@ export const SIMULATION_OPTIONS: SimulationOption[] = [
   },
   {
     id: 'OPT-PROFIT-2', type: 'PURE_PROFIT', categoryLabel: '순마진 극대화', rankLabel: '2안 (차선책 1)',
-    name: '타겟 모바일 18% 할인 + 무료배송 지원', targetChannel: '더현대 서울 모바일 앱 전용 타겟 푸시 핫딜',
+    name: 'Hmall 모바일 18% 할인 + 무료배송', targetChannel: 'Hmall 모바일 전용 핫딜',
     discountRate: 18, expectedSalesQty: 132, expectedRevenue: 70400000, expectedNetContributionMargin: 27500000,
     savedDisposalCost: 5760000, liquidationDays: 10, confidenceScore: 89,
     reasoning: '할인 폭을 높여 소진 기간을 단축하되 무료배송 비용을 함께 검토하는 대안입니다.',
@@ -90,7 +90,7 @@ export const SIMULATION_OPTIONS: SimulationOption[] = [
   },
   {
     id: 'OPT-PROFIT-3', type: 'PURE_PROFIT', categoryLabel: '순마진 극대화', rankLabel: '3안 (차선책 2)',
-    name: '12% 팝업 쿠폰 + 브랜드 라운지 이관 전시', targetChannel: '더현대 서울 2F 브랜드 라운지 오프라인 전용',
+    name: 'Hmall 12% 쿠폰 + 카테고리 추천 노출', targetChannel: 'Hmall 카테고리 기획전',
     discountRate: 12, expectedSalesQty: 112, expectedRevenue: 69500000, expectedNetContributionMargin: 26100000,
     savedDisposalCost: 5200000, liquidationDays: 15, confidenceScore: 82,
     reasoning: '할인 폭을 억제해 브랜드 가치를 보존하고 오프라인 노출로 수요를 보완합니다.',
@@ -98,7 +98,7 @@ export const SIMULATION_OPTIONS: SimulationOption[] = [
   },
   {
     id: 'OPT-FAST-1', type: 'FAST_LIQUIDATION', categoryLabel: '완판 중심', rankLabel: '1안 (완판 최우선)',
-    name: '30% 즉시 타임세일 (4일 완판)', targetChannel: '더현대 서울 공식 모바일 앱 알림 핫딜',
+    name: 'Hmall 30% 즉시 타임세일 (4일 완판)', targetChannel: 'Hmall 오늘의 특가',
     discountRate: 30, expectedSalesQty: 145, expectedRevenue: 66062500, expectedNetContributionMargin: 21350000,
     savedDisposalCost: 6525000, liquidationDays: 4, confidenceScore: 96,
     reasoning: '고할인으로 가장 빠르게 재고를 소진하지만 순마진 감소를 감수하는 대안입니다.',
@@ -106,7 +106,7 @@ export const SIMULATION_OPTIONS: SimulationOption[] = [
   },
   {
     id: 'OPT-FAST-2', type: 'FAST_LIQUIDATION', categoryLabel: '완판 중심', rankLabel: '2안 (차선책 1)',
-    name: '25% 아울렛 팝업 이관 + 묶음 기획전', targetChannel: '더현대 아울렛 직영 팝업 코너',
+    name: 'Hmall 25% 할인 + 연관상품 묶음 기획전', targetChannel: 'Hmall 그룹사 통합 번들전',
     discountRate: 25, expectedSalesQty: 140, expectedRevenue: 68250000, expectedNetContributionMargin: 22800000,
     savedDisposalCost: 6100000, liquidationDays: 6, confidenceScore: 91,
     reasoning: '채널을 분리해 본점 브랜드 훼손을 줄이고 번들로 단기간 청산합니다.',
@@ -114,7 +114,7 @@ export const SIMULATION_OPTIONS: SimulationOption[] = [
   },
   {
     id: 'OPT-REV-1', type: 'MAX_REVENUE', categoryLabel: '최대 매출', rankLabel: '1안 (매출 최우선)',
-    name: '10% 전용 쿠폰 + 2F 중앙 행사장 전시', targetChannel: '더현대 서울 2F 중앙 행사장',
+    name: 'Hmall 10% 전용 쿠폰 + 메인 기획전 노출', targetChannel: 'Hmall 메인 기획전',
     discountRate: 10, expectedSalesQty: 95, expectedRevenue: 55575000, expectedNetContributionMargin: 22400000,
     savedDisposalCost: 4275000, liquidationDays: 21, confidenceScore: 78,
     reasoning: '외형 매출을 높이지만 소진 기간이 길어 잔여재고 리스크가 남는 대안입니다.',
@@ -122,7 +122,7 @@ export const SIMULATION_OPTIONS: SimulationOption[] = [
   },
   {
     id: 'OPT-REV-2', type: 'MAX_REVENUE', categoryLabel: '최대 매출', rankLabel: '2안 (차선책 1)',
-    name: '12% VIP 전용 큐레이션 기획전', targetChannel: '현대백화점 VIP 전용 모바일 큐레이션',
+    name: 'Hmall 12% 우수고객 전용 큐레이션', targetChannel: 'Hmall 우수고객 큐레이션',
     discountRate: 12, expectedSalesQty: 102, expectedRevenue: 57400000, expectedNetContributionMargin: 23500000,
     savedDisposalCost: 4800000, liquidationDays: 18, confidenceScore: 84,
     reasoning: '구매력 높은 VIP 고객층에 제한적으로 혜택을 노출하는 대안입니다.',

@@ -4,6 +4,7 @@ import { useMemo, useState } from 'react';
 import { useParams, useRouter, useSearchParams } from 'next/navigation';
 import { AppLayout } from '@/components/layout/app-layout';
 import { MOCK_OPTIMIZATION_CASES } from '@/lib/mock-data';
+import { INVENTORY_PRODUCTS, SKU_OPERATION_DATA } from '@/lib/inventory-control-data';
 import {
   buildSimulationFallback,
   getDefaultControls,
@@ -30,7 +31,9 @@ import {
   UserCheck,
   Calendar,
   X,
-  Share2
+  Share2,
+  Eye,
+  ShoppingBag,
 } from 'lucide-react';
 import {
   CartesianGrid,
@@ -60,6 +63,8 @@ export default function StrategySimulationPage() {
   const searchParams = useSearchParams();
   const caseId = (params?.id as string) || 'CASE-2026-001';
   const caseData = useMemo(() => MOCK_OPTIMIZATION_CASES.find((item) => item.id === caseId) || MOCK_OPTIMIZATION_CASES[0], [caseId]);
+  const selectedProduct = useMemo(() => INVENTORY_PRODUCTS.find((product) => product.id === searchParams.get('productId')), [searchParams]);
+  const selectedSku = useMemo(() => selectedProduct?.skus.find((sku) => sku.id === searchParams.get('skuId')), [searchParams, selectedProduct]);
 
   const selectedIds = useMemo(() => {
     const queryIds = (searchParams.get('options') || '').split(',').filter(Boolean);
@@ -67,13 +72,27 @@ export default function StrategySimulationPage() {
     return validOptions.length ? validOptions.map((option) => option.id) : ['OPT-PROFIT-1'];
   }, [searchParams]);
 
-  const selectedOptions = useMemo(() => selectedIds.map((id) => getSimulationOption(id)).filter(Boolean) as SimulationOption[], [selectedIds]);
+  const selectedOptions = useMemo(() => selectedIds
+    .map((id) => getSimulationOption(id))
+    .filter(Boolean)
+    .map((option) => {
+      if (!selectedSku) return option as SimulationOption;
+      const stockRatio = selectedSku.availableStock / Math.max(1, option!.inventoryQty);
+      return {
+        ...option!,
+        inventoryQty: selectedSku.availableStock,
+        sellingPrice: selectedSku.sellingPrice,
+        costPrice: Math.round(selectedSku.sellingPrice * 0.58),
+        expectedSalesQty: Math.min(selectedSku.availableStock, Math.max(1, Math.round(option!.expectedSalesQty * stockRatio))),
+      };
+    }) as SimulationOption[], [selectedIds, selectedSku]);
   const [activeOptionId, setActiveOptionId] = useState(selectedIds[0]);
   const initialControls = useMemo(() => Object.fromEntries(selectedOptions.map((option) => [option.id, getDefaultControls(option)])), [selectedOptions]);
   const [controlsByOption, setControlsByOption] = useState<Record<string, SimulationControls>>(initialControls);
   const [saved, setSaved] = useState(false);
   const [approved, setApproved] = useState(false);
   const [sentNotice, setSentNotice] = useState<string | null>(null);
+  const [isHmallPreviewOpen, setIsHmallPreviewOpen] = useState(false);
 
   // 검토 요청 모달 관련 상태
   const [isReviewModalOpen, setIsReviewModalOpen] = useState(false);
@@ -88,6 +107,11 @@ export default function StrategySimulationPage() {
   const activeControls = controlsByOption[activeOption.id] || getDefaultControls(activeOption);
   const results = useMemo(() => selectedOptions.map((option) => ({ option, controls: controlsByOption[option.id] || getDefaultControls(option), result: simulateOption(option, controlsByOption[option.id] || getDefaultControls(option)) })), [controlsByOption, selectedOptions]);
   const activeResult = results.find((item) => item.option.id === activeOption.id)?.result || simulateOption(activeOption, activeControls);
+  const previewProduct = selectedProduct ?? INVENTORY_PRODUCTS[0];
+  const previewSku = selectedSku ?? previewProduct.skus[0];
+  const previewImage = SKU_OPERATION_DATA[previewSku.id]?.imageUrl ?? previewProduct.imageUrl;
+  const discountedPrice = Math.max(0, Math.round(previewSku.sellingPrice * (1 - activeControls.discountRate / 100)));
+  const couponPrice = Math.max(0, Math.round(discountedPrice * (1 - activeControls.couponRate / 100)));
 
   const updateControl = <K extends keyof SimulationControls>(key: K, value: SimulationControls[K]) => {
     setSaved(false);
@@ -156,6 +180,9 @@ export default function StrategySimulationPage() {
             <ArrowLeft className="h-4 w-4" /> 전략 카드 목록으로 돌아가기
           </button>
           <div className="flex items-center gap-2">
+            <button onClick={() => setIsHmallPreviewOpen(true)} className="inline-flex items-center gap-1.5 rounded-xl border border-[#0F4C3A]/25 bg-white px-3 py-2 text-xs font-bold text-[#0F4C3A] hover:bg-emerald-50 cursor-pointer">
+              <Eye className="h-3.5 w-3.5" /> Hmall 판매화면 미리보기
+            </button>
             <button onClick={resetActive} className="inline-flex items-center gap-1.5 rounded-xl border border-slate-200 bg-white px-3 py-2 text-xs font-bold text-slate-600 hover:bg-slate-50 cursor-pointer">
               <RotateCcw className="h-3.5 w-3.5" /> AI 추천값으로 복원
             </button>
@@ -168,12 +195,12 @@ export default function StrategySimulationPage() {
         <section className="rounded-2xl border border-slate-200 bg-white p-5 shadow-xs">
           <div className="flex flex-wrap items-start justify-between gap-3">
             <div>
-              <span className="inline-flex rounded-md border border-emerald-200 bg-emerald-50 px-2 py-1 text-[10px] font-bold text-[#0F4C3A]">더현대 서울 시뮬레이션 워크벤치</span>
-              <h1 className="mt-2 text-xl font-bold tracking-tight text-slate-900">{caseData.title}</h1>
+              <span className="inline-flex rounded-md border border-emerald-200 bg-emerald-50 px-2 py-1 text-[10px] font-bold text-[#0F4C3A]">그룹 통합재고 시뮬레이션 워크벤치</span>
+              <h1 className="mt-2 text-xl font-bold tracking-tight text-slate-900">{selectedProduct && selectedSku ? `${selectedProduct.affiliate} ${selectedProduct.name} · ${selectedSku.optionLabel}` : caseData.title}</h1>
               <p className="mt-1 text-xs text-slate-500">AI 추천 원본을 기준으로 조건을 조정하고, 비교함에 담긴 전략의 비용·판매·잔여재고 결과를 비교합니다.</p>
             </div>
             <div className="text-right text-[11px] text-slate-500">
-              <p>데이터 기준: 2026.07.24 · 180일 판매 반응</p>
+              <p>데이터 기준: 2026.08.02 · 통합 판매·재고 데이터</p>
               <p className="mt-1 font-semibold text-[#0F4C3A]">실제 가격·쿠폰·재고는 변경되지 않습니다.</p>
             </div>
           </div>
@@ -342,6 +369,57 @@ export default function StrategySimulationPage() {
             </div>
           </main>
         </div>
+
+        {isHmallPreviewOpen && (
+          <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-950/65 p-4 backdrop-blur-sm">
+            <div className="max-h-[92vh] w-full max-w-4xl overflow-y-auto rounded-3xl bg-white shadow-2xl">
+              <div className="flex items-center justify-between border-b border-slate-200 px-6 py-4">
+                <div className="flex items-center gap-3">
+                  <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-[#071d49] text-white"><ShoppingBag className="h-5 w-5" /></div>
+                  <div><div className="flex items-center gap-2"><h3 className="font-bold text-slate-950">Hmall 판매화면 미리보기</h3><span className="rounded-full bg-amber-50 px-2 py-0.5 text-[9px] font-bold text-amber-700">시연용</span></div><p className="mt-0.5 text-[11px] text-slate-500">현재 시뮬레이션 조건이 고객 화면에 적용되는 모습을 확인합니다.</p></div>
+                </div>
+                <button type="button" onClick={() => setIsHmallPreviewOpen(false)} className="rounded-xl border border-slate-200 p-2 text-slate-500 hover:bg-slate-100"><X className="h-5 w-5" /></button>
+              </div>
+
+              <div className="bg-[#f7f7f7] p-5 sm:p-7">
+                <div className="mb-4 flex items-center justify-between rounded-xl bg-[#071d49] px-4 py-3 text-white"><div className="flex items-center gap-2"><span className="text-xl font-black tracking-tight">Hmall</span><span className="text-[10px] text-blue-100">현대백화점그룹 통합 온라인몰</span></div><span className="text-[10px] text-blue-100">AI 전략 적용 Preview</span></div>
+                <div className="grid overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-sm md:grid-cols-[1fr_1.05fr]">
+                  <div className="border-b border-slate-100 p-5 md:border-b-0 md:border-r">
+                    <div className="relative aspect-square overflow-hidden rounded-xl bg-slate-100">
+                      {/* eslint-disable-next-line @next/next/no-img-element */}
+                      <img src={previewImage} alt={previewProduct.imageAlt} className="h-full w-full object-cover" />
+                      <span className="absolute left-3 top-3 rounded-md bg-rose-600 px-2.5 py-1 text-xs font-bold text-white">{activeControls.discountRate}% SALE</span>
+                      {activeControls.bundleEnabled && <span className="absolute right-3 top-3 rounded-md bg-[#0F4C3A] px-2.5 py-1 text-xs font-bold text-white">그룹사 번들</span>}
+                    </div>
+                    <div className="mt-3 grid grid-cols-3 gap-2 text-center text-[10px] text-slate-500"><div className="rounded-lg bg-slate-50 p-2">Hmall 단독</div><div className="rounded-lg bg-slate-50 p-2">한정수량</div><div className="rounded-lg bg-slate-50 p-2">기간한정</div></div>
+                  </div>
+
+                  <div className="p-5 sm:p-6">
+                    <span className="text-xs font-bold text-[#0F4C3A]">{previewProduct.affiliate} · {previewProduct.brand}</span>
+                    <h2 className="mt-2 text-xl font-bold leading-snug text-slate-950">{previewProduct.name}</h2>
+                    <p className="mt-1 text-xs text-slate-500">{previewSku.optionLabel} · {previewSku.code}</p>
+                    <div className="mt-5 border-y border-slate-100 py-4">
+                      <div className="flex items-end gap-2"><span className="text-2xl font-black text-rose-600">{activeControls.discountRate}%</span><span className="text-3xl font-black text-slate-950">₩{discountedPrice.toLocaleString()}</span></div>
+                      <p className="mt-1 text-sm text-slate-400 line-through">정상가 ₩{previewSku.sellingPrice.toLocaleString()}</p>
+                      {activeControls.couponRate > 0 && <div className="mt-3 flex items-center justify-between rounded-xl bg-rose-50 px-3 py-2 text-xs"><span className="font-bold text-rose-700">쿠폰 적용 시</span><strong className="text-base text-rose-700">₩{couponPrice.toLocaleString()}</strong></div>}
+                    </div>
+                    <div className="mt-4 space-y-3 text-xs">
+                      <div className="flex justify-between gap-3"><span className="text-slate-500">프로모션</span><strong className="text-right text-slate-900">{activeOption.name}</strong></div>
+                      <div className="flex justify-between gap-3"><span className="text-slate-500">판매기간</span><strong className="text-slate-900">{activeControls.campaignDays}일간</strong></div>
+                      <div className="flex justify-between gap-3"><span className="text-slate-500">판매수량</span><strong className="text-slate-900">{activeControls.appliedQuantity.toLocaleString()}{previewSku.unit} 한정</strong></div>
+                      <div className="flex justify-between gap-3"><span className="text-slate-500">배송혜택</span><strong className={activeControls.freeShipping ? 'text-[#0F4C3A]' : 'text-slate-900'}>{activeControls.freeShipping ? '무료배송' : '기본 배송비 적용'}</strong></div>
+                      {activeControls.pointRate > 0 && <div className="flex justify-between gap-3"><span className="text-slate-500">H.Point</span><strong className="text-[#0F4C3A]">{activeControls.pointRate}% 적립</strong></div>}
+                    </div>
+                    <button type="button" className="mt-6 w-full rounded-xl bg-[#071d49] py-3.5 text-sm font-bold text-white">구매하기</button>
+                    <p className="mt-2 text-center text-[10px] text-slate-400">미리보기 화면으로 실제 주문이나 상품 등록은 진행되지 않습니다.</p>
+                  </div>
+                </div>
+
+                <div className="mt-4 grid gap-3 rounded-xl border border-emerald-200 bg-emerald-50 p-4 text-xs sm:grid-cols-3"><div><p className="text-[10px] text-emerald-700">예상 판매량</p><p className="mt-1 font-bold text-emerald-950">{activeResult.expectedSalesQty.toLocaleString()}{previewSku.unit}</p></div><div><p className="text-[10px] text-emerald-700">예상 잔여재고</p><p className="mt-1 font-bold text-emerald-950">{activeResult.remainingQty.toLocaleString()}{previewSku.unit}</p></div><div><p className="text-[10px] text-emerald-700">예상 소진기간</p><p className="mt-1 font-bold text-emerald-950">{activeResult.liquidationDays}일</p></div></div>
+              </div>
+            </div>
+          </div>
+        )}
 
         {/* Review Proposal Modal (담당자 및 메시지 채널 선택) */}
         {isReviewModalOpen && (

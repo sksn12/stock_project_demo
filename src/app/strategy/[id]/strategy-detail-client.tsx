@@ -1,11 +1,12 @@
 'use client';
 
 import { useState, useMemo } from 'react';
-import { useParams, useRouter } from 'next/navigation';
+import { useParams, useRouter, useSearchParams } from 'next/navigation';
 import { AppLayout } from '@/components/layout/app-layout';
 import { MOCK_OPTIMIZATION_CASES } from '@/lib/mock-data';
 import { StrategyOption } from '@/lib/types';
 import { getDefaultControls, getSimulationOption, simulateOption, SimulationControls } from '@/lib/simulation';
+import { INVENTORY_PRODUCTS } from '@/lib/inventory-control-data';
 import { 
   Sparkles, 
   ArrowLeft, 
@@ -218,7 +219,10 @@ function StrategyDetailModal({
 export default function StrategyDetailPage() {
   const params = useParams();
   const router = useRouter();
+  const searchParams = useSearchParams();
   const caseId = (params?.id as string) || 'CASE-2026-001';
+  const selectedProduct = INVENTORY_PRODUCTS.find((product) => product.id === searchParams.get('productId'));
+  const selectedSku = selectedProduct?.skus.find((sku) => sku.id === searchParams.get('skuId'));
 
   // 시뮬레이션 케이스 데이터
   const caseData = useMemo(() => {
@@ -237,9 +241,9 @@ export default function StrategyDetailPage() {
             id: 'OPT-PROFIT-1',
             rankLabel: '1안 (최우선 추천)',
             isBest: true,
-            name: '1안: 타겟 15% 할인 + 현대 H.Point 5% 적립',
+            name: '1안: Hmall 타겟 15% 할인 + H.Point 5% 적립',
             discountRate: 15,
-            targetChannel: '더현대 서울 2F 팝업 라운지 & 더현대 닷컴 큐레이션',
+            targetChannel: 'Hmall 개인화 추천 기획전',
             expectedNetContributionMargin: 29120000,
             savedDisposalCost: 5760000,
             liquidationDays: 12,
@@ -255,9 +259,9 @@ export default function StrategyDetailPage() {
             id: 'OPT-PROFIT-2',
             rankLabel: '2안 (차선책 1)',
             isBest: false,
-            name: '2안: 18% 타겟 모바일 할인 + 무료배송 지원',
+            name: '2안: Hmall 모바일 18% 할인 + 무료배송',
             discountRate: 18,
-            targetChannel: '더현대 서울 모바일 앱 전용 타겟 푸시 핫딜',
+            targetChannel: 'Hmall 모바일 전용 핫딜',
             expectedNetContributionMargin: 27500000,
             savedDisposalCost: 5760000,
             liquidationDays: 10,
@@ -273,9 +277,9 @@ export default function StrategyDetailPage() {
             id: 'OPT-PROFIT-3',
             rankLabel: '3안 (차선책 2)',
             isBest: false,
-            name: '3안: 12% 팝업 쿠폰 + 브랜드 라운지 이관 전시',
+            name: '3안: Hmall 12% 쿠폰 + 카테고리 추천 노출',
             discountRate: 12,
-            targetChannel: '더현대 서울 2F 브랜드 라운지 오프라인 전용',
+            targetChannel: 'Hmall 카테고리 기획전',
             expectedNetContributionMargin: 26100000,
             savedDisposalCost: 5200000,
             liquidationDays: 15,
@@ -298,9 +302,9 @@ export default function StrategyDetailPage() {
             id: 'OPT-FAST-1',
             rankLabel: '1안 (완판 최우선)',
             isBest: true,
-            name: '1안: 30% 즉시 타임세일 (4일 완판)',
+            name: '1안: Hmall 30% 즉시 타임세일 (4일 완판)',
             discountRate: 30,
-            targetChannel: '더현대 서울 공식 모바일 앱 알림 핫딜',
+            targetChannel: 'Hmall 오늘의 특가',
             expectedNetContributionMargin: 21350000,
             savedDisposalCost: 6525000,
             liquidationDays: 4,
@@ -316,9 +320,9 @@ export default function StrategyDetailPage() {
             id: 'OPT-FAST-2',
             rankLabel: '2안 (차선책 1)',
             isBest: false,
-            name: '2안: 25% 아울렛 팝업 이관 + 묶음 기획전',
+            name: '2안: Hmall 25% 할인 + 연관상품 묶음 기획전',
             discountRate: 25,
-            targetChannel: '더현대 아울렛 직영 팝업 코너',
+            targetChannel: 'Hmall 그룹사 통합 번들전',
             expectedNetContributionMargin: 22800000,
             savedDisposalCost: 6100000,
             liquidationDays: 6,
@@ -341,9 +345,9 @@ export default function StrategyDetailPage() {
             id: 'OPT-REV-1',
             rankLabel: '1안 (매출 최우선)',
             isBest: true,
-            name: '1안: 10% 전용 쿠폰 + 2F 중앙 행사장 전시',
+            name: '1안: Hmall 10% 전용 쿠폰 + 메인 기획전 노출',
             discountRate: 10,
-            targetChannel: '더현대 서울 2F 중앙 행사장',
+            targetChannel: 'Hmall 메인 기획전',
             expectedNetContributionMargin: 22400000,
             savedDisposalCost: 4275000,
             liquidationDays: 21,
@@ -359,9 +363,9 @@ export default function StrategyDetailPage() {
             id: 'OPT-REV-2',
             rankLabel: '2안 (차선책 1)',
             isBest: false,
-            name: '2안: 12% VIP 전용 큐레이션 기획전',
+            name: '2안: Hmall 12% 우수고객 전용 큐레이션',
             discountRate: 12,
-            targetChannel: '현대백화점 VIP 전용 모바일 큐레이션',
+            targetChannel: 'Hmall 우수고객 큐레이션',
             expectedNetContributionMargin: 23500000,
             savedDisposalCost: 4800000,
             liquidationDays: 18,
@@ -403,7 +407,12 @@ export default function StrategyDetailPage() {
 
   const startSimulation = (ids: string[]) => {
     const uniqueIds = Array.from(new Set(ids));
-    router.push(`/strategy/${caseId}/simulate?options=${encodeURIComponent(uniqueIds.join(','))}`);
+    const query = new URLSearchParams({ options: uniqueIds.join(',') });
+    if (selectedProduct && selectedSku) {
+      query.set('productId', selectedProduct.id);
+      query.set('skuId', selectedSku.id);
+    }
+    router.push(`/strategy/${caseId}/simulate?${query.toString()}`);
   };
 
   // 체크박스 클릭: 카드 라우팅과 독립적으로 비교 대상만 토글
@@ -464,14 +473,14 @@ export default function StrategyDetailPage() {
         <div className="bg-white p-6 rounded-2xl border border-slate-200 shadow-xs space-y-3">
           <div className="flex items-center justify-between">
             <span className="px-2.5 py-0.5 rounded text-[11px] font-bold bg-emerald-50 text-[#0F4C3A] border border-emerald-200">
-              더현대 서울 시뮬레이션 케이스 ID: {caseData.id}
+              통합재고 AI 전략 케이스 ID: {caseData.id}
             </span>
             <span className="text-xs font-bold text-slate-800 font-mono">생성일시: {caseData.createdAt}</span>
           </div>
-          <h1 className="text-2xl font-bold text-slate-900">{caseData.title}</h1>
+          <h1 className="text-2xl font-bold text-slate-900">{selectedProduct && selectedSku ? `${selectedProduct.affiliate} ${selectedProduct.name} AI 판매 전략` : caseData.title}</h1>
           <div className="flex flex-wrap gap-2 text-xs">
             <span className="px-2.5 py-1 bg-slate-100 border border-slate-200 text-slate-700 rounded-lg font-semibold">
-              대상 품목: {caseData.targetItems.map((i) => i.name).join(', ')}
+              대상 품목: {selectedProduct && selectedSku ? `${selectedProduct.name} · ${selectedSku.optionLabel} (${selectedSku.code})` : caseData.targetItems.map((i) => i.name).join(', ')}
             </span>
             {caseData.isBundle && (
               <span className="px-2.5 py-1 bg-amber-50 border border-amber-200 text-amber-800 rounded-lg font-bold">

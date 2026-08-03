@@ -1,6 +1,7 @@
 'use client';
 
 import { useEffect, useMemo, useState } from 'react';
+import { useRouter } from 'next/navigation';
 import {
   AlertTriangle,
   Building2,
@@ -18,6 +19,7 @@ import {
   MapPin,
   PackageCheck,
   ShieldAlert,
+  Sparkles,
   TrendingDown,
   Warehouse,
   X,
@@ -78,6 +80,7 @@ function strategyStatusLabel(status: 'APPROVED' | 'EXECUTING' | 'FINISHED') {
 }
 
 export function InventoryProductDetail({ product, onClose }: InventoryProductDetailProps) {
+  const router = useRouter();
   const [activeTab, setActiveTab] = useState<DetailTab>('SKU');
   const [selectedSkuId, setSelectedSkuId] = useState('');
   const [imageFailed, setImageFailed] = useState(false);
@@ -130,6 +133,10 @@ export function InventoryProductDetail({ product, onClose }: InventoryProductDet
 
   const affiliateMeta = AFFILIATE_META[product.affiliate];
   const selectedOperation = SKU_OPERATION_DATA[selectedSku.id];
+  const startAiStrategy = () => {
+    const query = new URLSearchParams({ productId: product.id, skuId: selectedSku.id });
+    router.push(`/strategy/generate?${query.toString()}`);
+  };
   const totalStock = product.skus.reduce((sum, sku) => sum + sku.stock, 0);
   const availableStock = product.skus.reduce((sum, sku) => sum + sku.availableStock, 0);
   const riskSkus = product.skus.filter((sku) => ['WARNING', 'CRITICAL'].includes(sku.riskStatus));
@@ -177,6 +184,9 @@ export function InventoryProductDetail({ product, onClose }: InventoryProductDet
               <p className="mt-1 text-sm text-slate-500">{product.brand} · {product.category}</p>
             </div>
             <div className="flex shrink-0 items-center gap-2">
+              <button type="button" onClick={startAiStrategy} className="inline-flex h-10 items-center gap-2 rounded-xl bg-[#0F4C3A] px-4 text-xs font-bold text-white shadow-sm transition hover:bg-[#0B392B]">
+                <Sparkles className="h-4 w-4 text-amber-300" /> 선택 SKU로 AI 전략 생성
+              </button>
               <button type="button" onClick={() => setBundleOpen(true)} className="inline-flex h-10 items-center gap-2 rounded-xl bg-slate-950 px-4 text-xs font-bold text-white transition hover:bg-[#0F4C3A]">
                 <Layers3 className="h-4 w-4 text-amber-300" /> 선택 SKU로 번들 구성
               </button>
