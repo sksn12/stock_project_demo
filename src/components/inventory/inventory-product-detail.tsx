@@ -256,7 +256,7 @@ export function InventoryProductDetail({ product, onClose }: InventoryProductDet
                       <div className="overflow-x-auto rounded-xl border border-slate-200">
                         <table className="w-full min-w-[860px] text-left text-xs">
                           <thead className="bg-slate-50 text-[11px] font-bold uppercase tracking-wide text-slate-500">
-                            <tr><th className="px-4 py-3">SKU 코드 / 옵션</th><th className="px-3 py-3 text-right">판매가</th><th className="px-3 py-3 text-right">현재고</th><th className="px-3 py-3 text-right">판매 가능</th><th className="px-3 py-3 text-right">예약</th><th className="px-3 py-3">{lifecycleLabel(product)}</th><th className="px-3 py-3">위험도</th></tr>
+                            <tr><th className="px-4 py-3">SKU 코드 / 옵션</th><th className="px-3 py-3 text-right">판매가</th><th className="px-3 py-3 text-right">현재고</th><th className="px-3 py-3 text-right">판매 가능</th><th className="px-3 py-3 text-right">출고 예정</th><th className="px-3 py-3">{lifecycleLabel(product)}</th><th className="px-3 py-3">위험도</th></tr>
                           </thead>
                           <tbody className="divide-y divide-slate-100">
                             {product.skus.map((sku) => {
@@ -317,7 +317,7 @@ export function InventoryProductDetail({ product, onClose }: InventoryProductDet
                                 <div className="grid gap-x-6 gap-y-3 sm:grid-cols-3">
                                   <div><p className="text-[9px] text-slate-400">입고·보관 정보</p><p className="mt-1 font-semibold text-slate-700">{lot.receivedAt} · {lot.location}</p></div>
                                   {lot.expiryDate && <div><p className="text-[9px] text-slate-400">판매 운영 일정</p><p className="mt-1 font-semibold text-slate-700">임박특가 {lot.nearExpiryStartDate}</p><p className="mt-0.5 font-semibold text-slate-700">판매중지 {lot.saleStopDate}</p></div>}
-                                  <div><p className="text-[9px] text-slate-400">재고 상세</p><p className="mt-1 font-semibold text-slate-700">총 {lot.quantity}{selectedSku.unit} · 예약 {lot.reservedQuantity}{selectedSku.unit}</p>{lot.expiryDate && <p className="mt-0.5 text-slate-500">판매중지 예상 잔여 {lot.expectedRemainingAtSaleStop}{selectedSku.unit}</p>}</div>
+                                  <div><p className="text-[9px] text-slate-400">재고 상세</p><p className="mt-1 font-semibold text-slate-700">총 {lot.quantity}{selectedSku.unit} · 출고 예정 {lot.reservedQuantity}{selectedSku.unit}</p>{lot.expiryDate && <p className="mt-0.5 text-slate-500">판매중지 예상 잔여 {lot.expectedRemainingAtSaleStop}{selectedSku.unit}</p>}</div>
                                 </div>
                                 {lot.traceabilityCode && <div className="mt-3 flex flex-wrap items-center gap-x-4 gap-y-1 rounded-lg border border-slate-200 bg-white px-3 py-2 text-[10px] text-slate-600"><span><b className="text-slate-800">이력추적번호</b> {lot.traceabilityCode}</span><span><b className="text-slate-800">제조업체</b> {lot.manufacturer}</span><span className={`font-bold ${lot.recallStatus === 'RECALL' ? 'text-rose-600' : 'text-emerald-700'}`}>{lot.recallStatus === 'RECALL' ? '회수 대상' : '회수 이상 없음'}</span></div>}
                                 <p className="mt-2 text-[10px] text-slate-500">{lot.note}</p>

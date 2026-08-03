@@ -3,15 +3,12 @@
 import { Suspense, useMemo, useState } from 'react';
 import { useSearchParams } from 'next/navigation';
 import {
-  AlertTriangle,
   ArrowRight,
   Boxes,
   Building2,
-  CheckCircle2,
   ChevronRight,
   Clock3,
   Database,
-  Package,
   RefreshCw,
   Search,
   ShieldAlert,
@@ -59,37 +56,6 @@ function productOptionSummary(product: InventoryProduct) {
   }).join(' / ');
 }
 
-function MetricCard({
-  label,
-  value,
-  helper,
-  icon,
-  tone = 'default',
-}: {
-  label: string;
-  value: string;
-  helper: string;
-  icon: React.ReactNode;
-  tone?: 'default' | 'risk' | 'success';
-}) {
-  const toneStyle = tone === 'risk'
-    ? 'text-rose-700'
-    : tone === 'success'
-      ? 'text-emerald-700'
-      : 'text-slate-950';
-
-  return (
-    <div className="rounded-2xl border border-slate-200 bg-white p-4 shadow-sm">
-      <div className="flex items-center justify-between gap-3 text-xs font-semibold text-slate-500">
-        <span>{label}</span>
-        {icon}
-      </div>
-      <p className={`mt-3 text-2xl font-bold tracking-tight tabular-nums ${toneStyle}`}>{value}</p>
-      <p className="mt-1 text-[11px] text-slate-400">{helper}</p>
-    </div>
-  );
-}
-
 function UnifiedInventoryContent() {
   const searchParams = useSearchParams();
   const [viewTab, setViewTab] = useState<ViewTab>(searchParams.get('tab') === 'risk' ? 'RISK' : 'ALL');
@@ -125,19 +91,11 @@ function UnifiedInventoryContent() {
         ...product.skus.flatMap((sku) => [sku.code, sku.optionLabel, ...Object.values(sku.options)]),
       ].join(' ').toLowerCase();
       return searchTarget.includes(normalizedQuery);
+    }).sort((left, right) => {
+      const affiliateOrder = ALL_AFFILIATES.indexOf(left.affiliate) - ALL_AFFILIATES.indexOf(right.affiliate);
+      return affiliateOrder || left.name.localeCompare(right.name, 'ko');
     });
   }, [affiliate, category, query, riskStatus, viewTab]);
-
-  const summary = useMemo(() => {
-    const skus = filteredProducts.flatMap((product) => product.skus);
-    return {
-      products: filteredProducts.length,
-      skus: skus.length,
-      stock: skus.reduce((sum, sku) => sum + sku.stock, 0),
-      available: skus.reduce((sum, sku) => sum + sku.availableStock, 0),
-      risks: skus.filter((sku) => ['WARNING', 'CRITICAL'].includes(sku.riskStatus)).length,
-    };
-  }, [filteredProducts]);
 
   const affiliateSummary = useMemo(() => {
     return ALL_AFFILIATES.map((company) => {
@@ -148,10 +106,47 @@ function UnifiedInventoryContent() {
         products: products.length,
         skus: skus.length,
         stock: skus.reduce((sum, sku) => sum + sku.stock, 0),
+        available: skus.reduce((sum, sku) => sum + sku.availableStock, 0),
         risks: skus.filter((sku) => ['WARNING', 'CRITICAL'].includes(sku.riskStatus)).length,
       };
     });
   }, []);
+
+  const inventoryOverview = useMemo(() => {
+    const all = affiliateSummary.reduce((total, item) => ({
+      products: total.products + item.products,
+      skus: total.skus + item.skus,
+      stock: total.stock + item.stock,
+      available: total.available + item.available,
+      risks: total.risks + item.risks,
+    }), { products: 0, skus: 0, stock: 0, available: 0, risks: 0 });
+
+    return [
+      {
+        key: 'ALL' as AffiliateFilter,
+        label: '전체 계열사',
+        shortName: 'ALL AFFILIATES',
+        accent: 'text-[#0F4C3A]',
+        soft: 'bg-[#F0F7F4]',
+        ...all,
+      },
+      ...affiliateSummary.map((item) => {
+        const meta = AFFILIATE_META[item.company];
+        return {
+          key: item.company as AffiliateFilter,
+          label: item.company,
+          shortName: meta.shortName,
+          accent: meta.accent,
+          soft: meta.soft,
+          products: item.products,
+          skus: item.skus,
+          stock: item.stock,
+          available: item.available,
+          risks: item.risks,
+        };
+      }),
+    ];
+  }, [affiliateSummary]);
 
   const resetFilters = () => {
     setAffiliate('ALL');
@@ -167,73 +162,67 @@ function UnifiedInventoryContent() {
 
   return (
     <div className="space-y-5 pb-10">
-      <section className="overflow-hidden rounded-3xl border border-slate-200 bg-slate-950 text-white shadow-sm">
-        <div className="grid gap-6 p-6 lg:grid-cols-[minmax(0,1fr)_auto] lg:items-end">
-          <div>
-            <div className="flex flex-wrap items-center gap-2 text-[11px] font-bold uppercase tracking-[0.18em] text-emerald-300">
-              <Database className="h-4 w-4" />
-              Hyundai Group Unified Inventory
+      <section className="space-y-3">
+        <div className="flex flex-col gap-4 rounded-2xl border border-slate-200 bg-white p-5 shadow-sm lg:flex-row lg:items-center lg:justify-between">
+          <div className="flex min-w-0 items-start gap-3">
+            <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-[#F0F7F4] text-[#0F4C3A]">
+              <Database className="h-5 w-5" />
             </div>
-            <h1 className="mt-3 text-2xl font-bold tracking-tight sm:text-3xl">그룹 통합재고 관제</h1>
-            <p className="mt-2 max-w-3xl text-sm leading-6 text-slate-300">
-              현대그린푸드·현대웰니스·현대리바트의 상품을 공통 상품 구조로 통합하고, 실제 재고는 옵션별 SKU 단위로 추적합니다.
-            </p>
+            <div>
+              <h1 className="text-2xl font-bold tracking-tight text-slate-950">그룹 통합재고 관제</h1>
+              <p className="mt-1.5 max-w-3xl text-xs leading-5 text-slate-500">
+                현대그린푸드·현대웰니스·현대리바트의 상품과 옵션별 SKU 재고를 하나의 기준으로 조회합니다.
+              </p>
+            </div>
           </div>
-          <div className="flex flex-wrap items-center gap-3">
-            <div className="rounded-xl border border-white/10 bg-white/5 px-4 py-2.5 text-xs text-slate-300">
-              최근 통합 동기화 <strong className="ml-1 text-white">2026.08.02 09:00</strong>
+          <div className="flex shrink-0 flex-wrap items-center gap-2">
+            <div className="rounded-xl border border-slate-200 bg-slate-50 px-3.5 py-2.5 text-[11px] text-slate-500">
+              최근 동기화 <strong className="ml-1 text-slate-900">2026.08.02 09:00</strong>
             </div>
             <button
               type="button"
               onClick={runMockSync}
               disabled={syncing}
-              className="inline-flex items-center gap-2 rounded-xl bg-white px-4 py-2.5 text-xs font-bold text-slate-950 transition hover:bg-emerald-100 disabled:opacity-70"
+              className="inline-flex items-center gap-2 rounded-xl bg-[#0F4C3A] px-4 py-2.5 text-xs font-bold text-white shadow-sm transition hover:bg-[#0B392B] disabled:opacity-70"
             >
               <RefreshCw className={`h-4 w-4 ${syncing ? 'animate-spin' : ''}`} />
               {syncing ? '동기화 중' : '데이터 동기화'}
             </button>
           </div>
         </div>
-        <div className="grid border-t border-white/10 sm:grid-cols-3">
-          {affiliateSummary.map((item) => {
-            const meta = AFFILIATE_META[item.company];
-            const isActive = affiliate === item.company;
+
+        <div className="grid gap-3 md:grid-cols-2 xl:grid-cols-4">
+          {inventoryOverview.map((item) => {
+            const isActive = affiliate === item.key;
             return (
               <button
                 type="button"
-                key={item.company}
+                key={item.key}
                 onClick={() => {
-                  setAffiliate(isActive ? 'ALL' : item.company);
+                  setAffiliate(item.key);
                   setCategory('ALL');
                 }}
-                className={`group border-white/10 p-4 text-left transition hover:bg-white/10 sm:border-r sm:last:border-r-0 ${isActive ? 'bg-white/15' : 'bg-white/[0.03]'}`}
+                className={`group rounded-2xl border p-4 text-left shadow-sm transition hover:-translate-y-0.5 hover:border-slate-300 hover:shadow-md ${isActive ? 'border-[#0F4C3A] bg-[#F0F7F4] ring-2 ring-[#0F4C3A]/10' : 'border-slate-200 bg-white'}`}
               >
                 <div className="flex items-center justify-between gap-3">
-                  <div>
-                    <p className="text-sm font-bold text-white">{item.company}</p>
-                    <p className="mt-0.5 text-[10px] font-semibold tracking-widest text-slate-400">{meta.shortName}</p>
+                  <div className="flex min-w-0 items-center gap-2.5">
+                    <span className={`flex h-8 w-8 shrink-0 items-center justify-center rounded-lg ${item.soft} ${item.accent}`}>{item.key === 'ALL' ? <Database className="h-4 w-4" /> : <Building2 className="h-4 w-4" />}</span>
+                    <div className="min-w-0">
+                      <p className="truncate text-sm font-bold text-slate-950">{item.label}</p>
+                      <p className={`mt-0.5 text-[9px] font-bold tracking-wider ${item.accent}`}>{item.shortName}</p>
+                    </div>
                   </div>
-                  <span className={`rounded-full px-2 py-1 text-[10px] font-bold ${item.risks > 0 ? 'bg-rose-500/20 text-rose-200' : 'bg-emerald-500/20 text-emerald-200'}`}>
-                    위험 SKU {item.risks}
-                  </span>
+                  {isActive && <span className="rounded-full bg-[#0F4C3A] px-2 py-1 text-[9px] font-bold text-white">선택됨</span>}
                 </div>
-                <div className="mt-3 flex items-end justify-between">
-                  <p className="text-xs text-slate-400">상품 {item.products} · SKU {item.skus}</p>
-                  <p className="text-lg font-bold tabular-nums text-white">{item.stock.toLocaleString()}<span className="ml-1 text-xs font-medium text-slate-400">재고</span></p>
+                <div className="mt-4 grid grid-cols-4 divide-x divide-slate-100 rounded-xl bg-slate-50/80 py-2.5 text-center">
+                  <div><p className="text-[9px] font-semibold text-slate-400">전체 재고</p><p className="mt-1 text-sm font-bold tabular-nums text-slate-950">{item.stock.toLocaleString()}</p></div>
+                  <div><p className="text-[9px] font-semibold text-slate-400">판매 가능</p><p className="mt-1 text-sm font-bold tabular-nums text-emerald-700">{item.available.toLocaleString()}</p></div>
+                  <div><p className="text-[9px] font-semibold text-slate-400">위험 SKU</p><p className={`mt-1 text-sm font-bold tabular-nums ${item.risks > 0 ? 'text-rose-600' : 'text-emerald-700'}`}>{item.risks}</p></div>
+                  <div><p className="text-[9px] font-semibold text-slate-400">상품 / SKU</p><p className="mt-1 text-sm font-bold tabular-nums text-slate-700">{item.products} / {item.skus}</p></div>
                 </div>
               </button>
             );
           })}
-        </div>
-      </section>
-
-      <section className="grid grid-cols-2 gap-3 lg:grid-cols-5">
-        <MetricCard label="통합 상품" value={`${summary.products}개`} helper="상품 마스터 기준" icon={<Package className="h-4 w-4 text-[#0F4C3A]" />} />
-        <MetricCard label="관리 SKU" value={`${summary.skus}개`} helper="옵션·용량·구성별" icon={<Boxes className="h-4 w-4 text-[#0F4C3A]" />} />
-        <MetricCard label="전체 재고" value={`${summary.stock.toLocaleString()}개`} helper="선택 조건 합계" icon={<Building2 className="h-4 w-4 text-[#0F4C3A]" />} />
-        <MetricCard label="판매 가능" value={`${summary.available.toLocaleString()}개`} helper="예약·보류 제외" icon={<CheckCircle2 className="h-4 w-4 text-emerald-600" />} tone="success" />
-        <div className="col-span-2 lg:col-span-1">
-          <MetricCard label="위험 SKU" value={`${summary.risks}개`} helper="위험·긴급 등급" icon={<AlertTriangle className="h-4 w-4 text-rose-600" />} tone="risk" />
         </div>
       </section>
 
