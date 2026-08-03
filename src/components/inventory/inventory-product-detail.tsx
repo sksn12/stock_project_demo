@@ -83,6 +83,7 @@ export function InventoryProductDetail({ product, onClose }: InventoryProductDet
   const [imageFailed, setImageFailed] = useState(false);
   const [bundleOpen, setBundleOpen] = useState(false);
   const [lotsExpanded, setLotsExpanded] = useState(false);
+  const [expandedLotId, setExpandedLotId] = useState<string | null>(null);
   const [descriptionExpanded, setDescriptionExpanded] = useState(false);
   const [expandedHistoryId, setExpandedHistoryId] = useState<string | null>(null);
 
@@ -93,6 +94,7 @@ export function InventoryProductDetail({ product, onClose }: InventoryProductDet
     setImageFailed(false);
     setBundleOpen(false);
     setLotsExpanded(false);
+    setExpandedLotId(null);
     setDescriptionExpanded(false);
     setExpandedHistoryId(null);
   }, [product]);
@@ -100,6 +102,7 @@ export function InventoryProductDetail({ product, onClose }: InventoryProductDet
   useEffect(() => {
     setImageFailed(false);
     setLotsExpanded(false);
+    setExpandedLotId(null);
   }, [selectedSkuId]);
 
   useEffect(() => {
@@ -283,25 +286,37 @@ export function InventoryProductDetail({ product, onClose }: InventoryProductDet
                             <Warehouse className="mt-0.5 h-4 w-4 text-[#0F4C3A]" />
                             <div><p className="text-xs font-bold text-slate-900">LOT·입고 묶음별 재고</p><p className="mt-0.5 text-[10px] text-slate-500">같은 SKU 안에서도 입고일·소비기한·보관 위치가 다른 재고를 구분합니다.</p></div>
                           </div>
-                          <span className="inline-flex items-center gap-1 rounded-full border border-slate-200 bg-white px-2.5 py-1 text-[10px] font-bold text-slate-600">{selectedOperation?.lots.length ?? 0}개 묶음 · 우선 출고 {selectedOperation?.lots.filter((lot) => lot.status === 'PRIORITY').length ?? 0}개 {lotsExpanded ? <ChevronUp className="h-3 w-3" /> : <ChevronDown className="h-3 w-3" />}</span>
+                          <span className="inline-flex items-center gap-1 rounded-full border border-slate-200 bg-white px-2.5 py-1 text-[10px] font-bold text-slate-600">{selectedOperation?.lots.length ?? 0}개 묶음 · {selectedOperation?.lots.some((lot) => lot.expiryDate) ? `FEFO 관리 ${selectedOperation.lots.filter((lot) => lot.expiryDate).length}개` : `우선 배정 ${selectedOperation?.lots.filter((lot) => lot.status === 'PRIORITY').length ?? 0}개`} {lotsExpanded ? <ChevronUp className="h-3 w-3" /> : <ChevronDown className="h-3 w-3" />}</span>
                         </button>
                         {!lotsExpanded ? (
-                          <div className="flex flex-wrap items-center justify-between gap-3 border-t border-slate-100 px-4 py-3 text-[11px]"><div><span className="font-bold text-slate-800">가장 먼저 출고:</span> <span className="ml-1 font-mono text-slate-600">{selectedOperation?.lots[0]?.id}</span><p className="mt-1 text-[10px] text-slate-400">{selectedOperation?.lots[0]?.expiryDate ? `${selectedOperation.lots[0].expiryDate} · ${selectedOperation.lots[0].expiryLabel}` : selectedOperation?.lots[0]?.expiryLabel}</p></div><span className="font-bold text-[#0F4C3A]">가용 {selectedOperation?.lots.reduce((sum, lot) => sum + lot.availableQuantity, 0) ?? 0}{selectedSku.unit}</span></div>
+                          <div className="flex flex-wrap items-center justify-between gap-3 border-t border-slate-100 px-4 py-3 text-[11px]"><div><span className="font-bold text-slate-800">{selectedOperation?.lots[0]?.expiryDate ? 'FEFO 출고 1순위:' : '우선 배정:'}</span> <span className="ml-1 font-mono text-slate-600">{selectedOperation?.lots[0]?.id}</span><p className="mt-1 text-[10px] text-slate-400">{selectedOperation?.lots[0]?.expiryDate ? `소비기한 ${selectedOperation.lots[0].expiryDate} · 판매중지 ${selectedOperation.lots[0].saleStopDate}` : selectedOperation?.lots[0]?.expiryLabel}</p></div><span className="font-bold text-[#0F4C3A]">가용 {selectedOperation?.lots.reduce((sum, lot) => sum + lot.availableQuantity, 0) ?? 0}{selectedSku.unit}</span></div>
                         ) : <>
                         <div className="divide-y divide-slate-100 border-t border-slate-100">
-                          {selectedOperation?.lots.map((lot) => (
-                            <div key={lot.id} className="grid gap-3 px-4 py-3 text-[11px] sm:grid-cols-[1.3fr_1fr_1fr_1fr] sm:items-center">
-                              <div>
-                                <div className="flex flex-wrap items-center gap-2"><span className="font-mono font-bold text-slate-900">{lot.id}</span><span className={`rounded-full border px-2 py-0.5 text-[9px] font-bold ${lot.status === 'PRIORITY' ? 'border-rose-200 bg-rose-50 text-rose-700' : lot.status === 'HOLD' ? 'border-amber-200 bg-amber-50 text-amber-700' : 'border-emerald-200 bg-emerald-50 text-emerald-700'}`}>{lot.status === 'PRIORITY' ? '우선 출고' : lot.status === 'HOLD' ? '출고 보류' : '정상'}</span></div>
-                                <p className="mt-1 text-[10px] text-slate-500">{lot.note}</p>
-                              </div>
-                              <div><p className="text-[9px] text-slate-400">입고일</p><p className="mt-1 font-semibold text-slate-700">{lot.receivedAt}</p></div>
-                              <div><p className="text-[9px] text-slate-400">{lot.expiryDate ? '소비기한' : '입고 구분'}</p><p className="mt-1 font-semibold text-slate-700">{lot.expiryDate ? `${lot.expiryDate} · ${lot.expiryLabel}` : lot.expiryLabel}</p></div>
-                              <div className="sm:text-right"><p className="text-[9px] text-slate-400">가용 / 총수량</p><p className="mt-1 font-bold text-[#0F4C3A]">{lot.availableQuantity}{selectedSku.unit} / {lot.quantity}{selectedSku.unit}</p><p className="mt-1 text-[9px] text-slate-400">{lot.location}</p></div>
+                          {selectedOperation?.lots.map((lot, lotIndex) => {
+                            const isLotOpen = expandedLotId === lot.id;
+                            const showRemainingWarning = lot.expiryDate && (selectedSku.riskStatus === 'WARNING' || selectedSku.riskStatus === 'CRITICAL') && (lot.expectedRemainingAtSaleStop ?? 0) > 0;
+                            return (
+                            <div key={lot.id} className="text-[11px]">
+                              <button type="button" onClick={() => setExpandedLotId((current) => current === lot.id ? null : lot.id)} className={`grid w-full gap-3 px-4 py-3 text-left transition hover:bg-slate-50 sm:grid-cols-[1.5fr_1fr_.8fr_auto] sm:items-center ${isLotOpen ? 'bg-slate-50' : 'bg-white'}`}>
+                                <div className="min-w-0"><div className="flex flex-wrap items-center gap-2"><span className="truncate font-mono font-bold text-slate-900">{lot.id}</span><span className={`rounded-full border px-2 py-0.5 text-[9px] font-bold ${lot.status === 'PRIORITY' ? 'border-rose-200 bg-rose-50 text-rose-700' : lot.status === 'HOLD' ? 'border-amber-200 bg-amber-50 text-amber-700' : 'border-emerald-200 bg-emerald-50 text-emerald-700'}`}>{lot.expiryDate ? `FEFO ${lotIndex + 1}순위` : lot.status === 'HOLD' ? '출고 보류' : lot.status === 'PRIORITY' ? '우선 배정' : '정상'}</span></div></div>
+                                <div><p className="text-[9px] text-slate-400">{lot.expiryDate ? '소비기한' : '입고 구분'}</p><p className="mt-0.5 font-bold text-slate-800">{lot.expiryDate ? <>{lot.expiryLabel} <span className="font-normal text-slate-500">· {lot.expiryDate}</span></> : lot.expiryLabel}</p></div>
+                                <div className="sm:text-right"><p className="text-[9px] text-slate-400">가용재고</p><p className="mt-0.5 font-bold text-[#0F4C3A]">{lot.availableQuantity}{selectedSku.unit}</p>{showRemainingWarning && <p className="mt-0.5 text-[9px] font-semibold text-amber-700">중지 후 {lot.expectedRemainingAtSaleStop}{selectedSku.unit} 예상</p>}</div>
+                                <span className="flex items-center justify-end text-slate-400">{isLotOpen ? <ChevronUp className="h-4 w-4" /> : <ChevronDown className="h-4 w-4" />}</span>
+                              </button>
+                              {isLotOpen && <div className="border-t border-slate-100 bg-slate-50/70 px-4 py-3">
+                                <div className="grid gap-x-6 gap-y-3 sm:grid-cols-3">
+                                  <div><p className="text-[9px] text-slate-400">입고·보관 정보</p><p className="mt-1 font-semibold text-slate-700">{lot.receivedAt} · {lot.location}</p></div>
+                                  {lot.expiryDate && <div><p className="text-[9px] text-slate-400">판매 운영 일정</p><p className="mt-1 font-semibold text-slate-700">임박특가 {lot.nearExpiryStartDate}</p><p className="mt-0.5 font-semibold text-slate-700">판매중지 {lot.saleStopDate}</p></div>}
+                                  <div><p className="text-[9px] text-slate-400">재고 상세</p><p className="mt-1 font-semibold text-slate-700">총 {lot.quantity}{selectedSku.unit} · 예약 {lot.reservedQuantity}{selectedSku.unit}</p>{lot.expiryDate && <p className="mt-0.5 text-slate-500">판매중지 예상 잔여 {lot.expectedRemainingAtSaleStop}{selectedSku.unit}</p>}</div>
+                                </div>
+                                {lot.traceabilityCode && <div className="mt-3 flex flex-wrap items-center gap-x-4 gap-y-1 rounded-lg border border-slate-200 bg-white px-3 py-2 text-[10px] text-slate-600"><span><b className="text-slate-800">이력추적번호</b> {lot.traceabilityCode}</span><span><b className="text-slate-800">제조업체</b> {lot.manufacturer}</span><span className={`font-bold ${lot.recallStatus === 'RECALL' ? 'text-rose-600' : 'text-emerald-700'}`}>{lot.recallStatus === 'RECALL' ? '회수 대상' : '회수 이상 없음'}</span></div>}
+                                <p className="mt-2 text-[10px] text-slate-500">{lot.note}</p>
+                              </div>}
                             </div>
-                          ))}
+                            );
+                          })}
                         </div>
-                        <div className="flex items-center gap-2 border-t border-slate-100 bg-emerald-50/50 px-4 py-2.5 text-[10px] text-emerald-800"><Clock3 className="h-3.5 w-3.5" />우선 출고 LOT부터 배정하는 선입선출 기준을 적용합니다.</div>
+                        <div className="flex items-center gap-2 border-t border-slate-100 bg-emerald-50/50 px-4 py-2.5 text-[10px] text-emerald-800"><Clock3 className="h-3.5 w-3.5" />FEFO: 소비기한이 가까운 LOT부터 출고합니다.</div>
                         </>}
                       </div>
                     </div>

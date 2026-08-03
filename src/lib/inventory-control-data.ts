@@ -27,6 +27,12 @@ export interface InventoryLot {
   receivedAt: string;
   expiryDate?: string;
   expiryLabel: string;
+  nearExpiryStartDate?: string;
+  saleStopDate?: string;
+  expectedRemainingAtSaleStop?: number;
+  traceabilityCode?: string;
+  manufacturer?: string;
+  recallStatus?: 'CLEAR' | 'RECALL';
   quantity: number;
   availableQuantity: number;
   reservedQuantity: number;
@@ -395,6 +401,16 @@ function formatDate(date: Date) {
     .replace(/\. /g, '.').replace(/\.$/, '');
 }
 
+function subtractDays(date: Date, days: number) {
+  const result = new Date(date);
+  result.setDate(result.getDate() - days);
+  return result;
+}
+
+function daysBetween(from: Date, to: Date) {
+  return Math.max(0, Math.ceil((to.getTime() - from.getTime()) / (1000 * 60 * 60 * 24)));
+}
+
 export const SKU_OPERATION_DATA: Record<string, SkuOperationData> = Object.fromEntries(
   INVENTORY_PRODUCTS.flatMap((product) => product.skus.map((sku) => {
     const firstQuantity = Math.ceil(sku.stock * 0.42);
@@ -403,8 +419,15 @@ export const SKU_OPERATION_DATA: Record<string, SkuOperationData> = Object.fromE
     const secondReserved = sku.reservedStock - firstReserved;
     const expiryDays = Number(sku.expiryLabel.match(/\d+/)?.[0] ?? 90);
     const isFurniture = product.affiliate === '현대리바트';
+    const isWellness = product.affiliate === '현대웰니스';
+    const policy = isWellness
+      ? { nearExpiryDays: 90, saleStopDays: 30 }
+      : { nearExpiryDays: 3, saleStopDays: 1 };
+    const referenceDate = new Date(2026, 7, 2);
     const firstExpiry = new Date(2026, 7, 2 + Math.max(1, expiryDays - 2));
     const secondExpiry = new Date(2026, 7, 2 + expiryDays + 5);
+    const firstSaleStop = subtractDays(firstExpiry, policy.saleStopDays);
+    const secondSaleStop = subtractDays(secondExpiry, policy.saleStopDays);
     const locationPrefix = sku.location.split(' ').slice(0, -1).join(' ');
     const lots: InventoryLot[] = [
       {
@@ -412,6 +435,12 @@ export const SKU_OPERATION_DATA: Record<string, SkuOperationData> = Object.fromE
         receivedAt: isFurniture ? '2026.05.18' : '2026.07.29',
         expiryDate: isFurniture ? undefined : formatDate(firstExpiry),
         expiryLabel: isFurniture ? '선입고 재고' : `D-${Math.max(1, expiryDays - 2)}`,
+        nearExpiryStartDate: isFurniture ? undefined : formatDate(subtractDays(firstExpiry, policy.nearExpiryDays)),
+        saleStopDate: isFurniture ? undefined : formatDate(firstSaleStop),
+        expectedRemainingAtSaleStop: isFurniture ? undefined : Math.max(0, firstQuantity - firstReserved - Math.ceil(daysBetween(referenceDate, firstSaleStop) * sku.salesVelocity)),
+        traceabilityCode: isWellness ? `HT-${sku.code}-01` : undefined,
+        manufacturer: isWellness ? 'H.Well 제조 파트너' : undefined,
+        recallStatus: isWellness ? 'CLEAR' : undefined,
         quantity: firstQuantity,
         availableQuantity: firstQuantity - firstReserved,
         reservedQuantity: firstReserved,
@@ -424,6 +453,12 @@ export const SKU_OPERATION_DATA: Record<string, SkuOperationData> = Object.fromE
         receivedAt: isFurniture ? '2026.07.11' : '2026.08.01',
         expiryDate: isFurniture ? undefined : formatDate(secondExpiry),
         expiryLabel: isFurniture ? '최근 입고 재고' : `D-${expiryDays + 5}`,
+        nearExpiryStartDate: isFurniture ? undefined : formatDate(subtractDays(secondExpiry, policy.nearExpiryDays)),
+        saleStopDate: isFurniture ? undefined : formatDate(secondSaleStop),
+        expectedRemainingAtSaleStop: isFurniture ? undefined : Math.max(0, secondQuantity - secondReserved - Math.ceil(daysBetween(referenceDate, secondSaleStop) * sku.salesVelocity)),
+        traceabilityCode: isWellness ? `HT-${sku.code}-02` : undefined,
+        manufacturer: isWellness ? 'H.Well 제조 파트너' : undefined,
+        recallStatus: isWellness ? 'CLEAR' : undefined,
         quantity: secondQuantity,
         availableQuantity: secondQuantity - secondReserved,
         reservedQuantity: secondReserved,
