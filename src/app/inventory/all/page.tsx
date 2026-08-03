@@ -48,6 +48,17 @@ function productMetrics(product: InventoryProduct) {
   return { totalStock, availableStock, riskSkus, highestRiskSku };
 }
 
+function productOptionSummary(product: InventoryProduct) {
+  const optionKeys = [...new Set(product.skus.flatMap((sku) => Object.keys(sku.options)))];
+
+  return optionKeys.slice(0, 2).map((key) => {
+    const values = [...new Set(product.skus.map((sku) => sku.options[key]).filter(Boolean))];
+    const visibleValues = values.slice(0, 2).join('·');
+    const remainingCount = Math.max(0, values.length - 2);
+    return `${key} ${visibleValues}${remainingCount > 0 ? ` 외 ${remainingCount}종` : ''}`;
+  }).join(' / ');
+}
+
 function MetricCard({
   label,
   value,
@@ -316,7 +327,7 @@ function UnifiedInventoryContent() {
 
         {filteredProducts.length > 0 ? (
           <div className="overflow-x-auto">
-            <table className="w-full min-w-[1050px] text-left text-xs">
+            <table className="w-full min-w-[1180px] text-left text-xs">
               <thead className="bg-white text-[11px] font-bold uppercase tracking-wide text-slate-400">
                 <tr>
                   <th className="px-5 py-3">계열사</th>
@@ -357,8 +368,8 @@ function UnifiedInventoryContent() {
                         <div className="flex items-center gap-2">
                           <Boxes className="h-4 w-4 text-slate-400" />
                           <div>
-                            <p className="font-bold text-slate-800">{product.skus.length}개 SKU</p>
-                            <p className="mt-0.5 text-[10px] text-slate-400">위험 {metrics.riskSkus.length}개 포함</p>
+                            <p className="max-w-[220px] text-[10px] font-semibold leading-4 text-slate-700">{productOptionSummary(product)}</p>
+                            <p className="mt-1 text-[10px] text-slate-400">{product.skus.length}개 SKU · 위험 {metrics.riskSkus.length}개 포함</p>
                           </div>
                         </div>
                       </td>

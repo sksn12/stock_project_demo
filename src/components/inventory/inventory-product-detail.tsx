@@ -55,6 +55,16 @@ function formatCurrency(value: number) {
   return `₩${value.toLocaleString('ko-KR')}`;
 }
 
+function lifecycleLabel(product: InventoryProduct) {
+  return product.affiliate === '현대리바트' ? '시즌 종료' : '소비기한';
+}
+
+function lifecycleValue(product: InventoryProduct, sku: InventorySku) {
+  return product.affiliate === '현대리바트'
+    ? sku.expiryLabel.replace(/^시즌\s*/, '')
+    : sku.expiryLabel;
+}
+
 function strategyStatusStyle(status: 'APPROVED' | 'EXECUTING' | 'FINISHED') {
   if (status === 'FINISHED') return 'border-slate-200 bg-slate-100 text-slate-700';
   if (status === 'EXECUTING') return 'border-sky-200 bg-sky-50 text-sky-700';
@@ -198,9 +208,9 @@ export function InventoryProductDetail({ product, onClose }: InventoryProductDet
                     ))}
                   </div>
                   <div className="mt-4 space-y-2 border-t border-slate-100 pt-4 text-xs">
-                    <div className="flex justify-between"><span className="text-slate-500">판매가</span><strong>{formatCurrency(selectedSku.sellingPrice)}</strong></div>
+                    <div className="flex items-center justify-between gap-3"><span className="text-slate-500">판매가</span><strong className="text-sm font-extrabold text-slate-950 tabular-nums">{formatCurrency(selectedSku.sellingPrice)}</strong></div>
                     <div className="flex justify-between"><span className="text-slate-500">판매 가능</span><strong className="text-emerald-700">{selectedSku.availableStock}{selectedSku.unit}</strong></div>
-                    <div className="flex justify-between"><span className="text-slate-500">기한·시즌</span><strong>{selectedSku.expiryLabel}</strong></div>
+                    <div className="flex items-center justify-between gap-3"><span className="text-slate-500">{lifecycleLabel(product)}</span><strong className="rounded-md border border-amber-200 bg-amber-50 px-2 py-1 font-bold text-amber-700">{lifecycleValue(product, selectedSku)}</strong></div>
                   </div>
                 </div>
 
@@ -231,9 +241,9 @@ export function InventoryProductDetail({ product, onClose }: InventoryProductDet
                         <Building2 className="h-4 w-4 text-[#0F4C3A]" /><span className="font-semibold text-slate-800">{product.name}</span><ChevronRight className="h-3.5 w-3.5" /><span>하위 SKU {product.skus.length}개</span>
                       </div>
                       <div className="overflow-x-auto rounded-xl border border-slate-200">
-                        <table className="w-full min-w-[740px] text-left text-xs">
+                        <table className="w-full min-w-[860px] text-left text-xs">
                           <thead className="bg-slate-50 text-[11px] font-bold uppercase tracking-wide text-slate-500">
-                            <tr><th className="px-4 py-3">SKU 코드 / 옵션</th><th className="px-3 py-3 text-right">현재고</th><th className="px-3 py-3 text-right">판매 가능</th><th className="px-3 py-3 text-right">예약</th><th className="px-3 py-3">기한·시즌</th><th className="px-3 py-3">위험도</th></tr>
+                            <tr><th className="px-4 py-3">SKU 코드 / 옵션</th><th className="px-3 py-3 text-right">판매가</th><th className="px-3 py-3 text-right">현재고</th><th className="px-3 py-3 text-right">판매 가능</th><th className="px-3 py-3 text-right">예약</th><th className="px-3 py-3">{lifecycleLabel(product)}</th><th className="px-3 py-3">위험도</th></tr>
                           </thead>
                           <tbody className="divide-y divide-slate-100">
                             {product.skus.map((sku) => {
@@ -243,11 +253,12 @@ export function InventoryProductDetail({ product, onClose }: InventoryProductDet
                               return (
                                 <tr key={sku.id} onClick={() => setSelectedSkuId(sku.id)} className={`cursor-pointer transition ${isSelected ? 'bg-emerald-50/70 ring-1 ring-inset ring-emerald-300' : 'hover:bg-slate-50'}`}>
                                   <td className="px-4 py-3"><div className="flex items-center gap-3"><div aria-hidden="true" className={`h-11 w-14 shrink-0 rounded-lg border bg-cover bg-center ${isSelected ? 'border-emerald-400' : 'border-slate-200'}`} style={{ backgroundImage: operation?.imageUrl ? `url(${operation.imageUrl})` : undefined }} /><div className="min-w-0"><div className="flex items-center gap-2"><p className="truncate font-semibold text-slate-900">{sku.optionLabel}</p>{isSelected && <span className="rounded-full bg-[#0F4C3A] px-1.5 py-0.5 text-[9px] font-bold text-white">선택</span>}</div><p className="mt-0.5 font-mono text-[10px] text-slate-500">{sku.code}</p><div className="mt-1 flex flex-wrap gap-1">{Object.entries(sku.options).slice(0, 2).map(([key, value]) => <span key={key} className="rounded bg-slate-100 px-1.5 py-0.5 text-[9px] text-slate-500">{value}</span>)}</div></div></div></td>
+                                  <td className="px-3 py-3 text-right font-bold tabular-nums text-slate-950">{formatCurrency(sku.sellingPrice)}</td>
                                   <td className="px-3 py-3 text-right font-bold tabular-nums text-slate-900">{sku.stock.toLocaleString()}{sku.unit}</td>
                                   <td className="px-3 py-3 text-right font-semibold tabular-nums text-emerald-700">{sku.availableStock.toLocaleString()}{sku.unit}</td>
                                   <td className="px-3 py-3 text-right tabular-nums text-slate-500">{sku.reservedStock.toLocaleString()}{sku.unit}</td>
-                                  <td className="px-3 py-3 font-medium text-slate-700">{sku.expiryLabel}</td>
-                                  <td className="px-3 py-3"><span className={`inline-flex rounded-full border px-2 py-1 text-[10px] font-bold ${risk.className}`}>{risk.label} {sku.riskScore}</span></td>
+                                  <td className="px-3 py-3"><span className="inline-flex rounded-md border border-amber-200 bg-amber-50 px-2 py-1 font-bold text-amber-700">{lifecycleValue(product, sku)}</span></td>
+                                  <td className="px-3 py-3"><span className={`inline-flex rounded-full border px-2 py-1 text-[10px] font-bold ${risk.className}`}>{risk.label} {sku.riskScore}점</span></td>
                                 </tr>
                               );
                             })}
