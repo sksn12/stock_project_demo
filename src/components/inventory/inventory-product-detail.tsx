@@ -4,11 +4,8 @@ import { useEffect, useMemo, useState } from 'react';
 import { useRouter } from 'next/navigation';
 import {
   AlertTriangle,
-  Building2,
-  CalendarClock,
   CheckCircle2,
   ChevronDown,
-  ChevronRight,
   ChevronUp,
   CircleDollarSign,
   Clock3,
@@ -16,11 +13,9 @@ import {
   ImageOff,
   Info,
   Layers3,
-  MapPin,
   PackageCheck,
   ShieldAlert,
   Sparkles,
-  TrendingDown,
   Warehouse,
   X,
 } from 'lucide-react';
@@ -42,12 +37,14 @@ import {
   INVENTORY_STRATEGY_HISTORY,
   InventoryProduct,
   InventorySku,
+  getEffectiveSkuRiskStatus,
   RISK_META,
   SKU_OPERATION_DATA,
 } from '@/lib/inventory-control-data';
 
 interface InventoryProductDetailProps {
   product: InventoryProduct | null;
+  initialSkuId?: string;
   onClose: () => void;
 }
 
@@ -79,33 +76,31 @@ function strategyStatusLabel(status: 'APPROVED' | 'EXECUTING' | 'FINISHED') {
   return '승인 완료';
 }
 
-export function InventoryProductDetail({ product, onClose }: InventoryProductDetailProps) {
+export function InventoryProductDetail({ product, initialSkuId, onClose }: InventoryProductDetailProps) {
   const router = useRouter();
   const [activeTab, setActiveTab] = useState<DetailTab>('SKU');
   const [selectedSkuId, setSelectedSkuId] = useState('');
   const [imageFailed, setImageFailed] = useState(false);
   const [bundleOpen, setBundleOpen] = useState(false);
-  const [lotsExpanded, setLotsExpanded] = useState(false);
-  const [expandedLotId, setExpandedLotId] = useState<string | null>(null);
   const [descriptionExpanded, setDescriptionExpanded] = useState(false);
   const [expandedHistoryId, setExpandedHistoryId] = useState<string | null>(null);
+  const [expandedTraceLotId, setExpandedTraceLotId] = useState<string | null>(null);
 
   useEffect(() => {
     if (!product) return;
     setActiveTab('SKU');
-    setSelectedSkuId(product.skus[0]?.id ?? '');
+    const requestedSkuExists = product.skus.some((sku) => sku.id === initialSkuId);
+    setSelectedSkuId(requestedSkuExists ? initialSkuId ?? '' : product.skus[0]?.id ?? '');
     setImageFailed(false);
     setBundleOpen(false);
-    setLotsExpanded(false);
-    setExpandedLotId(null);
     setDescriptionExpanded(false);
     setExpandedHistoryId(null);
-  }, [product]);
+    setExpandedTraceLotId(null);
+  }, [initialSkuId, product]);
 
   useEffect(() => {
     setImageFailed(false);
-    setLotsExpanded(false);
-    setExpandedLotId(null);
+    setExpandedTraceLotId(null);
   }, [selectedSkuId]);
 
   useEffect(() => {
@@ -133,21 +128,15 @@ export function InventoryProductDetail({ product, onClose }: InventoryProductDet
 
   const affiliateMeta = AFFILIATE_META[product.affiliate];
   const selectedOperation = SKU_OPERATION_DATA[selectedSku.id];
+  const nearestExpiryLot = selectedOperation?.lots.find((lot) => lot.expiryDate);
+  const skuRiskStatus = getEffectiveSkuRiskStatus(selectedSku);
   const startAiStrategy = () => {
     const query = new URLSearchParams({ productId: product.id, skuId: selectedSku.id });
     router.push(`/strategy/generate?${query.toString()}`);
   };
-  const totalStock = product.skus.reduce((sum, sku) => sum + sku.stock, 0);
-  const availableStock = product.skus.reduce((sum, sku) => sum + sku.availableStock, 0);
-  const riskSkus = product.skus.filter((sku) => ['WARNING', 'CRITICAL'].includes(sku.riskStatus));
   const dailySales = Math.max(0.1, selectedSku.salesVelocity);
-  const expectedRemain30 = Math.max(0, Math.round(selectedSku.stock - dailySales * 30));
-  const expectedDepletionDays = Math.ceil(selectedSku.stock / dailySales);
-  const expiryDay = Number(selectedSku.expiryLabel.match(/\d+/)?.[0] ?? 60);
-  const expectedRemainAtExpiry = Math.max(0, Math.round(selectedSku.stock - dailySales * expiryDay));
-  const estimatedLoss = Math.round(
-    expectedRemainAtExpiry * selectedSku.sellingPrice * (product.affiliate === '현대리바트' ? 0.18 : 0.28)
-  );
+  const nearestExpiryLabel = nearestExpiryLot?.expiryLabel ?? selectedSku.expiryLabel;
+  const expiryDay = Number(nearestExpiryLabel.match(/\d+/)?.[0] ?? 60);
   const confidence = Math.max(72, Math.min(94, Math.round(95 - selectedSku.riskScore * 0.12)));
   const forecastDays = [0, 7, 14, 30, 60, 90];
   const forecastData = forecastDays.map((day) => {
@@ -162,7 +151,7 @@ export function InventoryProductDetail({ product, onClose }: InventoryProductDet
   return (
     <>
       <div
-        className="fixed inset-0 z-50 flex justify-end bg-slate-950/40 backdrop-blur-[2px]"
+        className="fixed inset-0 z-50 !m-0 flex justify-end bg-slate-950/40 backdrop-blur-[2px]"
         role="dialog"
         aria-modal="true"
         aria-labelledby="inventory-product-title"
@@ -170,34 +159,34 @@ export function InventoryProductDetail({ product, onClose }: InventoryProductDet
           if (event.target === event.currentTarget) onClose();
         }}
       >
-        <section className="flex h-full w-full max-w-5xl flex-col overflow-hidden bg-[#f7f8fa] shadow-2xl animate-in slide-in-from-right duration-200">
+        <section className="flex h-dvh w-full max-w-6xl flex-col overflow-hidden bg-[#f7f8fa] shadow-2xl animate-in slide-in-from-right duration-200">
           <header className="flex items-start justify-between gap-4 border-b border-slate-200 bg-white px-6 py-5">
             <div className="min-w-0">
               <div className="mb-2 flex flex-wrap items-center gap-2">
                 <span className={`rounded-full border px-2.5 py-1 text-[11px] font-bold ${affiliateMeta.soft} ${affiliateMeta.accent} ${affiliateMeta.border}`}>
                   {product.affiliate}
                 </span>
-                <span className="font-mono text-[11px] font-semibold text-slate-500">{product.productCode}</span>
+                <span className="font-mono text-[11px] font-semibold text-slate-500">{selectedSku.code}</span>
                 <span className="text-[11px] text-slate-400">최근 동기화 {product.updatedAt}</span>
               </div>
-              <h2 id="inventory-product-title" className="truncate text-xl font-bold tracking-tight text-slate-950">{product.name}</h2>
-              <p className="mt-1 text-sm text-slate-500">{product.brand} · {product.category}</p>
+              <h2 id="inventory-product-title" className="truncate text-xl font-bold tracking-tight text-slate-950">{selectedSku.optionLabel}</h2>
+              <p className="mt-1 text-sm text-slate-500">{product.name} · {product.brand} · {product.category}</p>
             </div>
             <div className="flex shrink-0 items-center gap-2">
               <button type="button" onClick={startAiStrategy} className="inline-flex h-10 items-center gap-2 rounded-xl bg-[#0F4C3A] px-4 text-xs font-bold text-white shadow-sm transition hover:bg-[#0B392B]">
-                <Sparkles className="h-4 w-4 text-amber-300" /> 선택 SKU로 AI 전략 생성
+                <Sparkles className="h-4 w-4 text-amber-300" /> AI 전략 생성
               </button>
-              <button type="button" onClick={() => setBundleOpen(true)} className="inline-flex h-10 items-center gap-2 rounded-xl bg-slate-950 px-4 text-xs font-bold text-white transition hover:bg-[#0F4C3A]">
-                <Layers3 className="h-4 w-4 text-amber-300" /> 선택 SKU로 번들 구성
+              <button type="button" onClick={() => setBundleOpen(true)} className="inline-flex h-10 items-center gap-2 rounded-xl border border-slate-300 bg-white px-4 text-xs font-bold text-slate-700 transition hover:border-[#0F4C3A] hover:bg-emerald-50 hover:text-[#0F4C3A]">
+                <Layers3 className="h-4 w-4 text-[#0F4C3A]" /> 번들 구성
               </button>
-              <button type="button" onClick={onClose} aria-label="상품 상세 닫기" className="inline-flex h-10 w-10 items-center justify-center rounded-xl border border-slate-200 bg-white text-slate-500 transition hover:bg-slate-100 hover:text-slate-900">
+              <button type="button" onClick={onClose} aria-label="SKU 상세 닫기" className="inline-flex h-10 w-10 items-center justify-center rounded-xl border border-slate-200 bg-white text-slate-500 transition hover:bg-slate-100 hover:text-slate-900">
                 <X className="h-5 w-5" />
               </button>
             </div>
           </header>
 
           <div className="flex-1 overflow-y-auto">
-            <div className="grid gap-5 p-6 lg:grid-cols-[300px_minmax(0,1fr)]">
+            <div className="grid gap-5 p-6 lg:grid-cols-[260px_minmax(0,1fr)]">
               <aside className="space-y-4">
                 <div className="relative aspect-[4/3] overflow-hidden rounded-2xl border border-slate-200 bg-slate-100 shadow-sm">
                   {!imageFailed ? (
@@ -208,13 +197,10 @@ export function InventoryProductDetail({ product, onClose }: InventoryProductDet
                       <ImageOff className="h-8 w-8" /><span className="text-xs font-medium">상품 이미지를 불러올 수 없습니다</span>
                     </div>
                   )}
-                  <div className="absolute inset-x-3 bottom-3 rounded-xl border border-white/30 bg-slate-950/65 px-3 py-2 text-xs text-white backdrop-blur-md">{selectedSku.optionLabel} · 선택 SKU 이미지</div>
                 </div>
 
                 <div className="rounded-2xl border border-slate-200 bg-white p-4 shadow-sm">
-                  <p className="text-xs font-bold text-slate-900">현재 선택 SKU</p>
-                  <p className="mt-2 font-bold text-[#0F4C3A]">{selectedSku.optionLabel}</p>
-                  <p className="mt-1 font-mono text-[10px] text-slate-500">{selectedSku.code}</p>
+                  <p className="text-xs font-bold text-slate-900">옵션·가격</p>
                   <div className="mt-3 flex flex-wrap gap-1.5">
                     {Object.entries(selectedSku.options).map(([key, value]) => (
                       <span key={key} className="rounded-lg border border-slate-200 bg-slate-50 px-2 py-1 text-[10px] text-slate-600">{key} <strong className="text-slate-900">{value}</strong></span>
@@ -223,7 +209,7 @@ export function InventoryProductDetail({ product, onClose }: InventoryProductDet
                   <div className="mt-4 space-y-2 border-t border-slate-100 pt-4 text-xs">
                     <div className="flex items-center justify-between gap-3"><span className="text-slate-500">판매가</span><strong className="text-sm font-extrabold text-slate-950 tabular-nums">{formatCurrency(selectedSku.sellingPrice)}</strong></div>
                     <div className="flex justify-between"><span className="text-slate-500">판매 가능</span><strong className="text-emerald-700">{selectedSku.availableStock}{selectedSku.unit}</strong></div>
-                    <div className="flex items-center justify-between gap-3"><span className="text-slate-500">{lifecycleLabel(product)}</span><strong className="rounded-md border border-amber-200 bg-amber-50 px-2 py-1 font-bold text-amber-700">{lifecycleValue(product, selectedSku)}</strong></div>
+                    {product.affiliate === '현대리바트' && <div className="flex items-center justify-between gap-3"><span className="text-slate-500">{lifecycleLabel(product)}</span><strong className="rounded-md border border-amber-200 bg-amber-50 px-2 py-1 font-bold text-amber-700">{lifecycleValue(product, selectedSku)}</strong></div>}
                   </div>
                 </div>
 
@@ -235,99 +221,105 @@ export function InventoryProductDetail({ product, onClose }: InventoryProductDet
               </aside>
 
               <div className="min-w-0 space-y-4">
-                <div className="grid grid-cols-1 gap-3 sm:grid-cols-3">
-                  <SummaryCard icon={<PackageCheck className="h-4 w-4 text-[#0F4C3A]" />} label="총 재고" value={`${totalStock.toLocaleString()}개`} />
-                  <SummaryCard icon={<CheckCircle2 className="h-4 w-4 text-emerald-600" />} label="판매 가능" value={`${availableStock.toLocaleString()}개`} tone="success" />
-                  <SummaryCard icon={<AlertTriangle className="h-4 w-4 text-rose-600" />} label="위험 SKU" value={`${riskSkus.length}개`} tone="risk" />
+                <div className="grid grid-cols-2 gap-3 xl:grid-cols-4">
+                  <SummaryCard icon={<PackageCheck className="h-4 w-4 text-[#0F4C3A]" />} label="현재고" value={`${selectedSku.stock.toLocaleString()}${selectedSku.unit}`} />
+                  <SummaryCard icon={<CheckCircle2 className="h-4 w-4 text-emerald-600" />} label="판매 가능" value={`${selectedSku.availableStock.toLocaleString()}${selectedSku.unit}`} tone="success" />
+                  <SummaryCard icon={<Clock3 className="h-4 w-4 text-slate-500" />} label="출고 예정" value={`${selectedSku.reservedStock.toLocaleString()}${selectedSku.unit}`} />
+                  <SummaryCard
+                    icon={skuRiskStatus === 'SAFE' ? <CheckCircle2 className="h-4 w-4 text-emerald-600" /> : <AlertTriangle className={`h-4 w-4 ${skuRiskStatus === 'CRITICAL' ? 'text-red-600' : skuRiskStatus === 'WARNING' ? 'text-orange-600' : 'text-yellow-700'}`} />}
+                    label="SKU 위험도"
+                    value={RISK_META[skuRiskStatus].label}
+                    tone={skuRiskStatus === 'CRITICAL' ? 'risk' : skuRiskStatus === 'WARNING' ? 'warning' : skuRiskStatus === 'CAUTION' ? 'normal' : 'success'}
+                    tooltip="SKU 위험도는 SKU 자체 판매부진 위험과 LOT별 위험도 중 가장 높은 등급을 반영합니다."
+                  />
                 </div>
 
                 <div className="rounded-2xl border border-slate-200 bg-white shadow-sm">
                   <div className="flex overflow-x-auto border-b border-slate-200 px-4 pt-2">
-                    <TabButton active={activeTab === 'SKU'} onClick={() => setActiveTab('SKU')}>상품·SKU 정보</TabButton>
+                    <TabButton active={activeTab === 'SKU'} onClick={() => setActiveTab('SKU')}>LOT 재고</TabButton>
                     <TabButton active={activeTab === 'FORECAST'} onClick={() => setActiveTab('FORECAST')}>수요예측·위험분석</TabButton>
                     <TabButton active={activeTab === 'HISTORY'} onClick={() => setActiveTab('HISTORY')}>지난 전략이력 ({productHistory.length})</TabButton>
                   </div>
 
                   {activeTab === 'SKU' && (
                     <div className="p-4">
-                      <div className="mb-3 flex items-center gap-2 text-xs text-slate-500">
-                        <Building2 className="h-4 w-4 text-[#0F4C3A]" /><span className="font-semibold text-slate-800">{product.name}</span><ChevronRight className="h-3.5 w-3.5" /><span>하위 SKU {product.skus.length}개</span>
-                      </div>
-                      <div className="overflow-x-auto rounded-xl border border-slate-200">
-                        <table className="w-full min-w-[860px] text-left text-xs">
-                          <thead className="bg-slate-50 text-[11px] font-bold uppercase tracking-wide text-slate-500">
-                            <tr><th className="px-4 py-3">SKU 코드 / 옵션</th><th className="px-3 py-3 text-right">판매가</th><th className="px-3 py-3 text-right">현재고</th><th className="px-3 py-3 text-right">판매 가능</th><th className="px-3 py-3 text-right">출고 예정</th><th className="px-3 py-3">{lifecycleLabel(product)}</th><th className="px-3 py-3">위험도</th></tr>
-                          </thead>
-                          <tbody className="divide-y divide-slate-100">
-                            {product.skus.map((sku) => {
-                              const risk = RISK_META[sku.riskStatus];
-                              const isSelected = selectedSkuId === sku.id;
-                              const operation = SKU_OPERATION_DATA[sku.id];
-                              return (
-                                <tr key={sku.id} onClick={() => setSelectedSkuId(sku.id)} className={`cursor-pointer transition ${isSelected ? 'bg-emerald-50/70 ring-1 ring-inset ring-emerald-300' : 'hover:bg-slate-50'}`}>
-                                  <td className="px-4 py-3"><div className="flex items-center gap-3"><div aria-hidden="true" className={`h-11 w-14 shrink-0 rounded-lg border bg-cover bg-center ${isSelected ? 'border-emerald-400' : 'border-slate-200'}`} style={{ backgroundImage: operation?.imageUrl ? `url(${operation.imageUrl})` : undefined }} /><div className="min-w-0"><div className="flex items-center gap-2"><p className="truncate font-semibold text-slate-900">{sku.optionLabel}</p>{isSelected && <span className="rounded-full bg-[#0F4C3A] px-1.5 py-0.5 text-[9px] font-bold text-white">선택</span>}</div><p className="mt-0.5 font-mono text-[10px] text-slate-500">{sku.code}</p><div className="mt-1 flex flex-wrap gap-1">{Object.entries(sku.options).slice(0, 2).map(([key, value]) => <span key={key} className="rounded bg-slate-100 px-1.5 py-0.5 text-[9px] text-slate-500">{value}</span>)}</div></div></div></td>
-                                  <td className="px-3 py-3 text-right font-bold tabular-nums text-slate-950">{formatCurrency(sku.sellingPrice)}</td>
-                                  <td className="px-3 py-3 text-right font-bold tabular-nums text-slate-900">{sku.stock.toLocaleString()}{sku.unit}</td>
-                                  <td className="px-3 py-3 text-right font-semibold tabular-nums text-emerald-700">{sku.availableStock.toLocaleString()}{sku.unit}</td>
-                                  <td className="px-3 py-3 text-right tabular-nums text-slate-500">{sku.reservedStock.toLocaleString()}{sku.unit}</td>
-                                  <td className="px-3 py-3"><span className="inline-flex rounded-md border border-amber-200 bg-amber-50 px-2 py-1 font-bold text-amber-700">{lifecycleValue(product, sku)}</span></td>
-                                  <td className="px-3 py-3"><span className={`inline-flex rounded-full border px-2 py-1 text-[10px] font-bold ${risk.className}`}>{risk.label} {sku.riskScore}점</span></td>
-                                </tr>
-                              );
-                            })}
-                          </tbody>
-                        </table>
-                      </div>
-                      <div className="mt-4 rounded-xl border border-slate-200 bg-slate-50 p-4">
-                        <div className="flex flex-wrap items-start justify-between gap-3">
-                          <div><p className="text-[11px] font-bold uppercase tracking-wider text-slate-400">선택 SKU 운영 정보</p><p className="mt-1 font-bold text-slate-900">{selectedSku.optionLabel}</p></div>
-                          <button type="button" onClick={() => setBundleOpen(true)} className="inline-flex items-center gap-1.5 rounded-lg border border-[#0F4C3A]/20 bg-white px-3 py-2 text-[11px] font-bold text-[#0F4C3A] hover:bg-emerald-50"><Layers3 className="h-3.5 w-3.5" />번들 구성</button>
+                      <div className="mb-4 flex flex-wrap items-start justify-between gap-3">
+                        <div className="flex items-start gap-2.5">
+                          <span className="flex h-8 w-8 items-center justify-center rounded-lg bg-slate-100 text-[#0F4C3A]"><Warehouse className="h-4 w-4" /></span>
+                          <div>
+                            <p className="text-sm font-bold text-slate-950">LOT별 재고 현황</p>
+                            <p className="mt-1 text-[11px] text-slate-500">기한과 출고 순서가 다른 재고를 LOT별로 비교합니다.</p>
+                          </div>
                         </div>
-                        <div className="mt-3 grid gap-2 text-[11px] sm:grid-cols-3">
-                          <InfoPill icon={<MapPin className="h-3.5 w-3.5" />}>{selectedSku.location}</InfoPill>
-                          <InfoPill icon={<CalendarClock className="h-3.5 w-3.5" />}>보관 {selectedSku.storageDays}일</InfoPill>
-                          <InfoPill icon={<TrendingDown className="h-3.5 w-3.5" />}>일평균 {selectedSku.salesVelocity}개 판매</InfoPill>
-                        </div>
+                        <span className="rounded-full border border-slate-200 bg-slate-50 px-2.5 py-1 text-[11px] font-bold text-slate-600">
+                          {selectedOperation?.lots.length ?? 0}개 LOT · {selectedOperation?.lots.some((lot) => lot.expiryDate) ? 'FEFO 적용' : '입고순 관리'}
+                        </span>
                       </div>
 
-                      <div className="mt-4 overflow-hidden rounded-xl border border-slate-200 bg-white">
-                        <button type="button" onClick={() => setLotsExpanded((current) => !current)} className="flex w-full flex-wrap items-start justify-between gap-3 bg-slate-50 px-4 py-3 text-left hover:bg-slate-100">
-                          <div className="flex items-start gap-2">
-                            <Warehouse className="mt-0.5 h-4 w-4 text-[#0F4C3A]" />
-                            <div><p className="text-xs font-bold text-slate-900">LOT·입고 묶음별 재고</p><p className="mt-0.5 text-[10px] text-slate-500">같은 SKU 안에서도 입고일·소비기한·보관 위치가 다른 재고를 구분합니다.</p></div>
-                          </div>
-                          <span className="inline-flex items-center gap-1 rounded-full border border-slate-200 bg-white px-2.5 py-1 text-[10px] font-bold text-slate-600">{selectedOperation?.lots.length ?? 0}개 묶음 · {selectedOperation?.lots.some((lot) => lot.expiryDate) ? `FEFO 관리 ${selectedOperation.lots.filter((lot) => lot.expiryDate).length}개` : `우선 배정 ${selectedOperation?.lots.filter((lot) => lot.status === 'PRIORITY').length ?? 0}개`} {lotsExpanded ? <ChevronUp className="h-3 w-3" /> : <ChevronDown className="h-3 w-3" />}</span>
-                        </button>
-                        {!lotsExpanded ? (
-                          <div className="flex flex-wrap items-center justify-between gap-3 border-t border-slate-100 px-4 py-3 text-[11px]"><div><span className="font-bold text-slate-800">{selectedOperation?.lots[0]?.expiryDate ? 'FEFO 출고 1순위:' : '우선 배정:'}</span> <span className="ml-1 font-mono text-slate-600">{selectedOperation?.lots[0]?.id}</span><p className="mt-1 text-[10px] text-slate-400">{selectedOperation?.lots[0]?.expiryDate ? `소비기한 ${selectedOperation.lots[0].expiryDate} · 판매중지 ${selectedOperation.lots[0].saleStopDate}` : selectedOperation?.lots[0]?.expiryLabel}</p></div><span className="font-bold text-[#0F4C3A]">가용 {selectedOperation?.lots.reduce((sum, lot) => sum + lot.availableQuantity, 0) ?? 0}{selectedSku.unit}</span></div>
-                        ) : <>
-                        <div className="divide-y divide-slate-100 border-t border-slate-100">
+                      <div className="space-y-2">
                           {selectedOperation?.lots.map((lot, lotIndex) => {
-                            const isLotOpen = expandedLotId === lot.id;
-                            const showRemainingWarning = lot.expiryDate && (selectedSku.riskStatus === 'WARNING' || selectedSku.riskStatus === 'CRITICAL') && (lot.expectedRemainingAtSaleStop ?? 0) > 0;
+                            const showRemainingWarning = lot.expiryDate && (lot.expectedRemainingAtSaleStop ?? 0) > 0;
+                            const lotRisk = RISK_META[lot.riskStatus];
+                            const statusLabel = lot.expiryDate
+                              ? `FEFO ${lotIndex + 1}순위`
+                              : lot.status === 'HOLD'
+                                ? '출고 보류'
+                                : lot.status === 'PRIORITY'
+                                  ? '우선 배정'
+                                  : '정상';
                             return (
-                            <div key={lot.id} className="text-[11px]">
-                              <button type="button" onClick={() => setExpandedLotId((current) => current === lot.id ? null : lot.id)} className={`grid w-full gap-3 px-4 py-3 text-left transition hover:bg-slate-50 sm:grid-cols-[1.5fr_1fr_.8fr_auto] sm:items-center ${isLotOpen ? 'bg-slate-50' : 'bg-white'}`}>
-                                <div className="min-w-0"><div className="flex flex-wrap items-center gap-2"><span className="truncate font-mono font-bold text-slate-900">{lot.id}</span><span className={`rounded-full border px-2 py-0.5 text-[9px] font-bold ${lot.status === 'PRIORITY' ? 'border-rose-200 bg-rose-50 text-rose-700' : lot.status === 'HOLD' ? 'border-amber-200 bg-amber-50 text-amber-700' : 'border-emerald-200 bg-emerald-50 text-emerald-700'}`}>{lot.expiryDate ? `FEFO ${lotIndex + 1}순위` : lot.status === 'HOLD' ? '출고 보류' : lot.status === 'PRIORITY' ? '우선 배정' : '정상'}</span></div></div>
-                                <div><p className="text-[9px] text-slate-400">{lot.expiryDate ? '소비기한' : '입고 구분'}</p><p className="mt-0.5 font-bold text-slate-800">{lot.expiryDate ? <>{lot.expiryLabel} <span className="font-normal text-slate-500">· {lot.expiryDate}</span></> : lot.expiryLabel}</p></div>
-                                <div className="sm:text-right"><p className="text-[9px] text-slate-400">가용재고</p><p className="mt-0.5 font-bold text-[#0F4C3A]">{lot.availableQuantity}{selectedSku.unit}</p>{showRemainingWarning && <p className="mt-0.5 text-[9px] font-semibold text-amber-700">중지 후 {lot.expectedRemainingAtSaleStop}{selectedSku.unit} 예상</p>}</div>
-                                <span className="flex items-center justify-end text-slate-400">{isLotOpen ? <ChevronUp className="h-4 w-4" /> : <ChevronDown className="h-4 w-4" />}</span>
-                              </button>
-                              {isLotOpen && <div className="border-t border-slate-100 bg-slate-50/70 px-4 py-3">
-                                <div className="grid gap-x-6 gap-y-3 sm:grid-cols-3">
-                                  <div><p className="text-[9px] text-slate-400">입고·보관 정보</p><p className="mt-1 font-semibold text-slate-700">{lot.receivedAt} · {lot.location}</p></div>
-                                  {lot.expiryDate && <div><p className="text-[9px] text-slate-400">판매 운영 일정</p><p className="mt-1 font-semibold text-slate-700">임박특가 {lot.nearExpiryStartDate}</p><p className="mt-0.5 font-semibold text-slate-700">판매중지 {lot.saleStopDate}</p></div>}
-                                  <div><p className="text-[9px] text-slate-400">재고 상세</p><p className="mt-1 font-semibold text-slate-700">총 {lot.quantity}{selectedSku.unit} · 출고 예정 {lot.reservedQuantity}{selectedSku.unit}</p>{lot.expiryDate && <p className="mt-0.5 text-slate-500">판매중지 예상 잔여 {lot.expectedRemainingAtSaleStop}{selectedSku.unit}</p>}</div>
+                              <article key={lot.id} className="rounded-xl border border-slate-200 bg-white px-4 py-3">
+                                <div className="grid gap-4 lg:grid-cols-[minmax(220px,1.25fr)_minmax(190px,1fr)_minmax(280px,1.45fr)] lg:items-center">
+                                  <div className="min-w-0">
+                                    <div className="flex flex-wrap items-center gap-2">
+                                      <span className="rounded-full border border-emerald-200 bg-emerald-50 px-2 py-0.5 text-[10px] font-bold text-emerald-700">{statusLabel}</span>
+                                      {lot.expiryDate && <span className="group/lotrisk relative">
+                                        <span className={`inline-flex rounded-full border px-2 py-0.5 text-[10px] font-bold ${lotRisk.className}`}>{lotRisk.label}</span>
+                                        <span role="tooltip" className="pointer-events-none invisible absolute bottom-full left-0 z-30 mb-2 w-64 rounded-lg bg-slate-950 px-3 py-2 text-[10px] font-medium leading-4 text-white opacity-0 shadow-xl transition group-hover/lotrisk:visible group-hover/lotrisk:opacity-100">
+                                          {lot.expectedRemainingAtSaleStop
+                                            ? `${lot.expiryLabel}이며 판매중지 시 ${lot.expectedRemainingAtSaleStop}${selectedSku.unit}가 남을 것으로 예상되어 ${lotRisk.label}으로 산정했습니다.`
+                                            : `${lot.expiryLabel} 소비기한을 기준으로 ${lotRisk.label} 등급으로 산정했습니다.`}
+                                        </span>
+                                      </span>}
+                                    </div>
+                                    <p className="mt-2 truncate font-mono text-xs font-bold text-slate-950">{lot.id}</p>
+                                    <p className="mt-1 truncate text-[11px] text-slate-500">입고 {lot.receivedAt} · {lot.location}</p>
+                                  </div>
+
+                                  <div className="border-slate-100 lg:border-l lg:pl-4">
+                                    <p className="text-[10px] font-semibold text-slate-400">{lot.expiryDate ? '소비기한 / 판매중지' : '입고 구분'}</p>
+                                    {lot.expiryDate ? <>
+                                      <div className="mt-1 flex flex-wrap items-center gap-2">
+                                        <span className={`rounded-md border px-2 py-1 text-xs font-extrabold ${expiryBadgeClass(lot.expiryLabel)}`}>{lot.expiryLabel}</span>
+                                        <span className="whitespace-nowrap text-[11px] font-medium text-slate-600">{lot.expiryDate}</span>
+                                      </div>
+                                      <p className="mt-1 text-[11px] text-slate-500">판매중지 {lot.saleStopDate}</p>
+                                    </> : <p className="mt-1 text-[13px] font-bold text-slate-900">{lot.expiryLabel}</p>}
+                                  </div>
+
+                                  <div className="grid grid-cols-3 gap-2 border-slate-100 text-center lg:border-l lg:pl-4">
+                                    <div><p className="text-[10px] text-slate-400">현재고</p><p className="mt-1 whitespace-nowrap text-[13px] font-bold tabular-nums text-slate-900">{lot.quantity}{selectedSku.unit}</p></div>
+                                    <div><p className="text-[10px] text-slate-400">출고 예정</p><p className="mt-1 whitespace-nowrap text-[13px] font-bold tabular-nums text-slate-600">{lot.reservedQuantity}{selectedSku.unit}</p></div>
+                                    <div><p className="text-[10px] text-slate-400">판매 가능</p><p className="mt-1 whitespace-nowrap text-[13px] font-extrabold tabular-nums text-emerald-700">{lot.availableQuantity}{selectedSku.unit}</p></div>
+                                  </div>
                                 </div>
-                                {lot.traceabilityCode && <div className="mt-3 flex flex-wrap items-center gap-x-4 gap-y-1 rounded-lg border border-slate-200 bg-white px-3 py-2 text-[10px] text-slate-600"><span><b className="text-slate-800">이력추적번호</b> {lot.traceabilityCode}</span><span><b className="text-slate-800">제조업체</b> {lot.manufacturer}</span><span className={`font-bold ${lot.recallStatus === 'RECALL' ? 'text-rose-600' : 'text-emerald-700'}`}>{lot.recallStatus === 'RECALL' ? '회수 대상' : '회수 이상 없음'}</span></div>}
-                                <p className="mt-2 text-[10px] text-slate-500">{lot.note}</p>
-                              </div>}
-                            </div>
+
+                                {showRemainingWarning && <p className="mt-2 border-t border-amber-100 pt-2 text-[10px] font-semibold text-amber-700">판매중지 시 {lot.expectedRemainingAtSaleStop}{selectedSku.unit}가 남을 것으로 예상됩니다.</p>}
+                                {lot.traceabilityCode && <div className="mt-2 border-t border-sky-100 pt-2 text-[10px]">
+                                  <button type="button" onClick={() => setExpandedTraceLotId((current) => current === lot.id ? null : lot.id)} className="inline-flex items-center gap-1.5 font-bold text-sky-700 hover:text-sky-900">
+                                    <Info className="h-3.5 w-3.5" /> 이력추적 {lot.recallStatus === 'RECALL' ? '회수 대상' : '정상'} · {expandedTraceLotId === lot.id ? '접기' : '정보 보기'}
+                                  </button>
+                                  {expandedTraceLotId === lot.id && <div className="mt-2 flex flex-wrap items-center gap-x-5 gap-y-1 rounded-lg bg-sky-50 px-3 py-2 text-[11px] text-slate-600"><span><b className="text-slate-800">이력추적번호</b> {lot.traceabilityCode}</span><span><b className="text-slate-800">제조업체</b> {lot.manufacturer}</span><span className={`font-bold ${lot.recallStatus === 'RECALL' ? 'text-rose-600' : 'text-emerald-700'}`}>{lot.recallStatus === 'RECALL' ? '회수 대상' : '회수 이상 없음'}</span></div>}
+                                </div>}
+                              </article>
                             );
                           })}
-                        </div>
-                        <div className="flex items-center gap-2 border-t border-slate-100 bg-emerald-50/50 px-4 py-2.5 text-[10px] text-emerald-800"><Clock3 className="h-3.5 w-3.5" />FEFO: 소비기한이 가까운 LOT부터 출고합니다.</div>
-                        </>}
+                      </div>
+                      <div className="mt-3 flex items-center gap-2 rounded-lg bg-slate-50 px-3 py-2.5 text-[11px] text-slate-600">
+                          <Clock3 className="h-3.5 w-3.5 text-[#0F4C3A]" />
+                          {selectedOperation?.lots.some((lot) => lot.expiryDate)
+                            ? 'FEFO: 소비기한이 가까운 LOT부터 출고합니다.'
+                            : '입고 시점과 배정 우선순위에 따라 재고를 출고합니다.'}
                       </div>
                     </div>
                   )}
@@ -335,18 +327,27 @@ export function InventoryProductDetail({ product, onClose }: InventoryProductDet
                   {activeTab === 'FORECAST' && (
                     <div className="space-y-4 p-4">
                       <div className="rounded-xl border border-rose-200 bg-rose-50 p-4">
-                        <div className="flex items-start gap-3"><ShieldAlert className="mt-0.5 h-5 w-5 shrink-0 text-rose-600" /><div><p className="font-bold text-rose-900">{selectedSku.optionLabel} 수요예측</p><p className="mt-1 text-xs leading-5 text-rose-800">상품 전체가 아닌 선택 SKU의 재고·판매속도·기한을 기준으로 계산합니다.</p></div></div>
+                        <div className="flex items-start gap-3"><ShieldAlert className="mt-0.5 h-5 w-5 shrink-0 text-rose-600" /><div><p className="font-bold text-rose-900">{selectedSku.optionLabel} 수요예측</p><p className="mt-1 text-xs leading-5 text-rose-800">수요예측은 선택한 SKU 전체를 기준으로 계산하며, LOT 정보는 소비기한과 판매중지 조건을 확인하는 데만 활용합니다.</p></div></div>
                       </div>
-                      <div className="grid grid-cols-2 gap-3 xl:grid-cols-4">
-                        <ForecastMetric label="30일 후 잔여" value={`${expectedRemain30}${selectedSku.unit}`} />
-                        <ForecastMetric label="예상 소진 기간" value={`${expectedDepletionDays}일`} warning={expectedDepletionDays > expiryDay} />
-                        <ForecastMetric label="기한 시점 잔여" value={`${expectedRemainAtExpiry}${selectedSku.unit}`} warning={expectedRemainAtExpiry > 0} />
-                        <ForecastMetric label="예상 보관·처리 손실" value={formatCurrency(estimatedLoss)} warning />
+                      <div className="rounded-xl border border-slate-200 bg-slate-50 p-4">
+                        <div className="flex flex-wrap items-start justify-between gap-3">
+                          <div>
+                            <p className="text-xs font-bold text-[#0F4C3A]">위험 판단 및 예측 근거</p>
+                            <p className="mt-2 text-xs leading-5 text-slate-700">{selectedSku.riskReason}</p>
+                          </div>
+                          <span className={`rounded-full border px-2.5 py-1 text-[10px] font-bold ${RISK_META[skuRiskStatus].className}`}>{RISK_META[skuRiskStatus].label}</span>
+                        </div>
+                        <div className="mt-3 grid grid-cols-2 gap-2 text-[11px] sm:grid-cols-4">
+                          <InfoValue label="일평균 판매" value={`${selectedSku.salesVelocity}${selectedSku.unit}`} />
+                          <InfoValue label="보관 기간" value={`${selectedSku.storageDays}일`} />
+                          <InfoValue label="현재 재고" value={`${selectedSku.stock}${selectedSku.unit}`} />
+                          <InfoValue label={nearestExpiryLot ? '가장 가까운 LOT' : '기한·시즌'} value={nearestExpiryLabel} highlight={Boolean(nearestExpiryLot)} />
+                        </div>
                       </div>
                       <div className="rounded-xl border border-slate-200 p-4">
                         <div className="flex flex-wrap items-center justify-between gap-2">
                           <div><p className="text-xs font-bold text-slate-900">방치 시 잔여재고 및 누적손실 예측</p><p className="mt-1 text-[10px] text-slate-400">예측범위 ±15% · 신뢰도 {confidence}%</p></div>
-                          <span className={`rounded-full border px-2.5 py-1 text-[10px] font-bold ${RISK_META[selectedSku.riskStatus].className}`}>{RISK_META[selectedSku.riskStatus].label} {selectedSku.riskScore}점</span>
+                          <span className={`rounded-full border px-2.5 py-1 text-[10px] font-bold ${RISK_META[skuRiskStatus].className}`}>{RISK_META[skuRiskStatus].label}</span>
                         </div>
                         <div className="mt-4 h-64 w-full">
                           <ResponsiveContainer width="100%" height="100%">
@@ -361,16 +362,6 @@ export function InventoryProductDetail({ product, onClose }: InventoryProductDet
                               <ReferenceLine yAxisId="stock" x={`D+${expiryDay}`} stroke="#be123c" strokeDasharray="3 3" />
                             </ComposedChart>
                           </ResponsiveContainer>
-                        </div>
-                      </div>
-                      <div className="rounded-xl border border-slate-200 bg-slate-50 p-4">
-                        <p className="text-xs font-bold text-[#0F4C3A]">위험 판단 및 예측 근거</p>
-                        <p className="mt-2 text-xs leading-5 text-slate-700">{selectedSku.riskReason}</p>
-                        <div className="mt-3 grid grid-cols-2 gap-2 text-[11px] sm:grid-cols-4">
-                          <InfoValue label="일평균 판매" value={`${selectedSku.salesVelocity}${selectedSku.unit}`} />
-                          <InfoValue label="보관 기간" value={`${selectedSku.storageDays}일`} />
-                          <InfoValue label="현재 재고" value={`${selectedSku.stock}${selectedSku.unit}`} />
-                          <InfoValue label="기한·시즌" value={selectedSku.expiryLabel} />
                         </div>
                       </div>
                     </div>
@@ -443,22 +434,22 @@ export function InventoryProductDetail({ product, onClose }: InventoryProductDet
   );
 }
 
-function SummaryCard({ icon, label, value, tone = 'default' }: { icon: React.ReactNode; label: string; value: string; tone?: 'default' | 'success' | 'risk' }) {
-  return <div className="rounded-2xl border border-slate-200 bg-white p-4 shadow-sm"><div className="flex items-center gap-2 text-xs font-medium text-slate-500">{icon}{label}</div><p className={`mt-2 text-2xl font-bold ${tone === 'success' ? 'text-emerald-700' : tone === 'risk' ? 'text-rose-700' : 'text-slate-950'}`}>{value}</p></div>;
+function SummaryCard({ icon, label, value, tone = 'default', tooltip }: { icon: React.ReactNode; label: string; value: string; tone?: 'default' | 'success' | 'normal' | 'warning' | 'risk'; tooltip?: string }) {
+  const valueTone = tone === 'success' ? 'text-emerald-700' : tone === 'normal' ? 'text-yellow-800' : tone === 'warning' ? 'text-orange-600' : tone === 'risk' ? 'text-red-600' : 'text-slate-950';
+  return <div className="group/summary relative rounded-2xl border border-slate-200 bg-white p-4 shadow-sm"><div className="flex items-center gap-2 text-xs font-medium text-slate-500">{icon}{label}{tooltip && <Info className="h-3.5 w-3.5 text-slate-400" />}</div><p className={`mt-2 text-2xl font-bold ${valueTone}`}>{value}</p>{tooltip && <div role="tooltip" className="pointer-events-none invisible absolute right-0 top-full z-30 mt-2 w-72 rounded-xl bg-slate-950 px-3 py-2.5 text-[11px] font-medium leading-5 text-white opacity-0 shadow-xl transition group-hover/summary:visible group-hover/summary:opacity-100">{tooltip}</div>}</div>;
 }
 
 function TabButton({ active, onClick, children }: { active: boolean; onClick: () => void; children: React.ReactNode }) {
   return <button type="button" onClick={onClick} className={`shrink-0 border-b-2 px-4 py-3 text-xs font-bold transition ${active ? 'border-[#0F4C3A] text-[#0F4C3A]' : 'border-transparent text-slate-500 hover:text-slate-800'}`}>{children}</button>;
 }
 
-function InfoPill({ icon, children }: { icon: React.ReactNode; children: React.ReactNode }) {
-  return <div className="flex items-center gap-2 rounded-lg bg-white p-2.5 text-slate-600"><span className="text-[#0F4C3A]">{icon}</span>{children}</div>;
+function expiryBadgeClass(expiryLabel: string) {
+  const days = Number(expiryLabel.match(/\d+/)?.[0] ?? 999);
+  return days <= 30
+    ? 'border-rose-300 bg-rose-50 text-rose-700'
+    : 'border-amber-300 bg-amber-50 text-amber-700';
 }
 
-function ForecastMetric({ label, value, warning = false }: { label: string; value: string; warning?: boolean }) {
-  return <div className="rounded-xl border border-slate-200 bg-white p-3"><p className="text-[10px] font-semibold text-slate-500">{label}</p><p className={`mt-1 text-base font-bold ${warning ? 'text-rose-700' : 'text-slate-900'}`}>{value}</p></div>;
-}
-
-function InfoValue({ label, value }: { label: string; value: string }) {
-  return <div className="rounded-lg bg-slate-50 p-2.5"><p className="text-[10px] text-slate-400">{label}</p><p className="mt-1 text-xs font-bold text-slate-800">{value}</p></div>;
+function InfoValue({ label, value, highlight = false }: { label: string; value: string; highlight?: boolean }) {
+  return <div className={`rounded-lg p-2.5 ${highlight ? 'bg-white' : 'bg-slate-50'}`}><p className="text-[10px] text-slate-400">{label}</p>{highlight ? <span className="mt-1 inline-flex rounded-md border border-amber-300 bg-amber-50 px-2 py-1 text-xs font-extrabold text-amber-700">{value}</span> : <p className="mt-1 text-xs font-bold text-slate-800">{value}</p>}</div>;
 }

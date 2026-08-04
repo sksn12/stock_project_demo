@@ -38,6 +38,7 @@ export interface InventoryLot {
   reservedQuantity: number;
   location: string;
   status: 'PRIORITY' | 'NORMAL' | 'HOLD';
+  riskStatus: SkuRiskStatus;
   note: string;
 }
 
@@ -131,10 +132,10 @@ export const AFFILIATE_META: Record<InventoryAffiliate, {
 };
 
 export const RISK_META: Record<SkuRiskStatus, { label: string; className: string }> = {
-  SAFE: { label: '정상', className: 'border-emerald-200 bg-emerald-50 text-emerald-700' },
-  CAUTION: { label: '주의', className: 'border-amber-200 bg-amber-50 text-amber-700' },
-  WARNING: { label: '위험', className: 'border-orange-200 bg-orange-50 text-orange-700' },
-  CRITICAL: { label: '긴급', className: 'border-rose-200 bg-rose-50 text-rose-700' },
+  SAFE: { label: '양호', className: 'border-emerald-300 bg-emerald-50 text-emerald-700' },
+  CAUTION: { label: '보통', className: 'border-yellow-400 bg-yellow-50 text-yellow-800' },
+  WARNING: { label: '주의', className: 'border-orange-300 bg-orange-50 text-orange-700' },
+  CRITICAL: { label: '위험', className: 'border-red-300 bg-red-50 text-red-600' },
 };
 
 export const INVENTORY_PRODUCTS: InventoryProduct[] = [
@@ -507,6 +508,13 @@ function daysBetween(from: Date, to: Date) {
   return Math.max(0, Math.ceil((to.getTime() - from.getTime()) / (1000 * 60 * 60 * 24)));
 }
 
+function calculateLotRiskStatus(daysUntilExpiry: number, expectedRemainingAtSaleStop: number): SkuRiskStatus {
+  if (daysUntilExpiry <= 7) return 'CRITICAL';
+  if (daysUntilExpiry <= 45 || expectedRemainingAtSaleStop > 0) return 'WARNING';
+  if (daysUntilExpiry <= 90) return 'CAUTION';
+  return 'SAFE';
+}
+
 export const SKU_OPERATION_DATA: Record<string, SkuOperationData> = Object.fromEntries(
   INVENTORY_PRODUCTS.flatMap((product) => product.skus.map((sku) => {
     const firstQuantity = Math.ceil(sku.stock * 0.42);
@@ -524,6 +532,8 @@ export const SKU_OPERATION_DATA: Record<string, SkuOperationData> = Object.fromE
     const secondExpiry = new Date(2026, 7, 2 + expiryDays + 5);
     const firstSaleStop = subtractDays(firstExpiry, policy.saleStopDays);
     const secondSaleStop = subtractDays(secondExpiry, policy.saleStopDays);
+    const firstExpectedRemaining = isFurniture ? 0 : Math.max(0, firstQuantity - firstReserved - Math.ceil(daysBetween(referenceDate, firstSaleStop) * sku.salesVelocity));
+    const secondExpectedRemaining = isFurniture ? 0 : Math.max(0, secondQuantity - secondReserved - Math.ceil(daysBetween(referenceDate, secondSaleStop) * sku.salesVelocity));
     const locationPrefix = sku.location.split(' ').slice(0, -1).join(' ');
     const lots: InventoryLot[] = [
       {
@@ -533,7 +543,7 @@ export const SKU_OPERATION_DATA: Record<string, SkuOperationData> = Object.fromE
         expiryLabel: isFurniture ? '선입고 재고' : `D-${Math.max(1, expiryDays - 2)}`,
         nearExpiryStartDate: isFurniture ? undefined : formatDate(subtractDays(firstExpiry, policy.nearExpiryDays)),
         saleStopDate: isFurniture ? undefined : formatDate(firstSaleStop),
-        expectedRemainingAtSaleStop: isFurniture ? undefined : Math.max(0, firstQuantity - firstReserved - Math.ceil(daysBetween(referenceDate, firstSaleStop) * sku.salesVelocity)),
+        expectedRemainingAtSaleStop: isFurniture ? undefined : firstExpectedRemaining,
         traceabilityCode: isWellness ? `HT-${sku.code}-01` : undefined,
         manufacturer: isWellness ? 'H.Well 제조 파트너' : undefined,
         recallStatus: isWellness ? 'CLEAR' : undefined,
@@ -542,6 +552,7 @@ export const SKU_OPERATION_DATA: Record<string, SkuOperationData> = Object.fromE
         reservedQuantity: firstReserved,
         location: sku.location,
         status: sku.riskStatus === 'CRITICAL' || sku.riskStatus === 'WARNING' ? 'PRIORITY' : 'NORMAL',
+        riskStatus: isFurniture ? 'SAFE' : calculateLotRiskStatus(Math.max(1, expiryDays - 2), firstExpectedRemaining),
         note: isFurniture ? '센터 선입고분 · 우선 배정' : '소비기한이 가까운 선입고 LOT',
       },
       {
@@ -551,7 +562,7 @@ export const SKU_OPERATION_DATA: Record<string, SkuOperationData> = Object.fromE
         expiryLabel: isFurniture ? '최근 입고 재고' : `D-${expiryDays + 5}`,
         nearExpiryStartDate: isFurniture ? undefined : formatDate(subtractDays(secondExpiry, policy.nearExpiryDays)),
         saleStopDate: isFurniture ? undefined : formatDate(secondSaleStop),
-        expectedRemainingAtSaleStop: isFurniture ? undefined : Math.max(0, secondQuantity - secondReserved - Math.ceil(daysBetween(referenceDate, secondSaleStop) * sku.salesVelocity)),
+        expectedRemainingAtSaleStop: isFurniture ? undefined : secondExpectedRemaining,
         traceabilityCode: isWellness ? `HT-${sku.code}-02` : undefined,
         manufacturer: isWellness ? 'H.Well 제조 파트너' : undefined,
         recallStatus: isWellness ? 'CLEAR' : undefined,
@@ -560,6 +571,7 @@ export const SKU_OPERATION_DATA: Record<string, SkuOperationData> = Object.fromE
         reservedQuantity: secondReserved,
         location: `${locationPrefix} ${sku.location.split(' ').at(-1)}-2`,
         status: 'NORMAL',
+        riskStatus: isFurniture ? 'SAFE' : calculateLotRiskStatus(expiryDays + 5, secondExpectedRemaining),
         note: isFurniture ? '최근 입고분 · 일반 배정' : '최근 입고된 정상 출고 LOT',
       },
     ];
@@ -571,6 +583,15 @@ export const SKU_OPERATION_DATA: Record<string, SkuOperationData> = Object.fromE
     }];
   }))
 );
+
+const RISK_PRIORITY: Record<SkuRiskStatus, number> = { SAFE: 0, CAUTION: 1, WARNING: 2, CRITICAL: 3 };
+
+export function getEffectiveSkuRiskStatus(sku: InventorySku): SkuRiskStatus {
+  const lotRisks = SKU_OPERATION_DATA[sku.id]?.lots.map((lot) => lot.riskStatus) ?? [];
+  return [sku.riskStatus, ...lotRisks].reduce((highest, current) =>
+    RISK_PRIORITY[current] > RISK_PRIORITY[highest] ? current : highest
+  , sku.riskStatus);
+}
 
 export const INVENTORY_STRATEGY_OUTCOMES: Record<string, InventoryStrategyOutcome> = {
   'STR-2026-071': {
