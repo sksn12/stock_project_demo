@@ -29,8 +29,8 @@ export function Header({ isSidebarOpen, onToggleSidebar }: HeaderProps) {
         </button>
         <div className="flex items-center gap-2.5 bg-emerald-50/80 border border-emerald-200/80 px-3 py-1.5 rounded-xl">
           <Building2 className="w-4 h-4 text-[#0F4C3A]" />
-          <span className="text-xs font-bold text-[#0F4C3A]">{isInventoryArea ? '현대그룹 계열사 통합재고' : '현대백화점 더현대 서울 (The Hyundai Seoul)'}</span>
-          <span className="px-1.5 py-0.5 rounded text-[10px] bg-[#0F4C3A] text-white font-semibold">{isInventoryArea ? '통합관제' : '단일관제'}</span>
+          <span className="text-xs font-bold text-[#0F4C3A]">{isInventoryArea ? '현대그린푸드 채널 통합재고' : '현대백화점 더현대 서울 (The Hyundai Seoul)'}</span>
+          <span className="px-1.5 py-0.5 rounded text-[10px] bg-[#0F4C3A] text-white font-semibold">{isInventoryArea ? '재고최적화' : '단일관제'}</span>
         </div>
       </div>
 
@@ -38,7 +38,7 @@ export function Header({ isSidebarOpen, onToggleSidebar }: HeaderProps) {
       <div className="flex items-center gap-4">
         {isInventoryArea ? (
           <div className="hidden md:flex items-center gap-1.5 text-xs text-[#0F4C3A] bg-emerald-50 border border-emerald-200 px-3 py-1.5 rounded-md font-semibold">
-            <span>3개 계열사 · SKU 기준 통합</span>
+            <span>온라인·오프라인 판매처 통합</span>
           </div>
         ) : (
           <a
@@ -61,7 +61,7 @@ export function Header({ isSidebarOpen, onToggleSidebar }: HeaderProps) {
           </div>
           <div className="text-left hidden sm:block">
             <p className="text-xs font-semibold text-slate-800 leading-tight">김영만 수석 MD</p>
-            <p className="text-[10px] text-slate-500">{isInventoryArea ? '그룹 통합재고 운영' : '더현대 서울 총괄 재고전략'}</p>
+            <p className="text-[10px] text-slate-500">{isInventoryArea ? '현대그린푸드 재고운영' : '더현대 서울 총괄 재고전략'}</p>
           </div>
         </div>
       </div>
