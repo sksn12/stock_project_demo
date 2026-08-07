@@ -10,6 +10,7 @@ import {
   History,
   ImageOff,
   Info,
+  Layers3,
   MapPin,
   PackageCheck,
   Send,
@@ -46,6 +47,7 @@ import {
   getDaysToStockout,
   getSkuChannelRisk,
 } from '@/lib/greenfood-channel-data';
+import { InventoryBundleModal } from '@/components/inventory/inventory-bundle-modal';
 
 interface InventoryProductDetailProps {
   product: InventoryProduct | null;
@@ -84,6 +86,7 @@ export function InventoryProductDetail({ product, initialSkuId, initialChannelId
   const [requestQuantity, setRequestQuantity] = useState(10);
   const [neededDate, setNeededDate] = useState('2026-08-08');
   const [requestState, setRequestState] = useState<'IDLE' | 'SENDING' | 'SENT'>('IDLE');
+  const [bundleOpen, setBundleOpen] = useState(false);
 
   useEffect(() => {
     if (!product) return;
@@ -96,14 +99,15 @@ export function InventoryProductDetail({ product, initialSkuId, initialChannelId
     setRequestSourceId('');
     setRequestOpen(false);
     setRequestState('IDLE');
+    setBundleOpen(false);
   }, [initialChannelId, initialSkuId, product]);
 
   useEffect(() => {
     if (!product) return;
-    const handleKeyDown = (event: KeyboardEvent) => { if (event.key === 'Escape') onClose(); };
+    const handleKeyDown = (event: KeyboardEvent) => { if (event.key === 'Escape' && !bundleOpen) onClose(); };
     window.addEventListener('keydown', handleKeyDown);
     return () => window.removeEventListener('keydown', handleKeyDown);
-  }, [onClose, product]);
+  }, [bundleOpen, onClose, product]);
 
   const selectedSku = useMemo<InventorySku | undefined>(() => product?.skus.find((sku) => sku.id === selectedSkuId), [product, selectedSkuId]);
   const productHistory = useMemo(() => {
@@ -196,6 +200,9 @@ export function InventoryProductDetail({ product, initialSkuId, initialChannelId
             <p className="mt-1 text-sm text-slate-500">{product.name} · {product.brand} · {product.category}</p>
           </div>
           <div className="flex shrink-0 items-center gap-2">
+            <button type="button" onClick={() => setBundleOpen(true)} className="inline-flex h-10 items-center gap-2 rounded-xl border border-[#0F4C3A] bg-white px-4 text-xs font-bold text-[#0F4C3A] transition hover:bg-emerald-50">
+              <Layers3 className="h-4 w-4" /> 번들 구성
+            </button>
             <button type="button" onClick={startAiStrategy} className="inline-flex h-10 items-center gap-2 rounded-xl bg-[#0F4C3A] px-4 text-xs font-bold text-white shadow-sm transition hover:bg-[#0B392B]">
               <Sparkles className="h-4 w-4 text-amber-300" /> AI 최적화 요청
             </button>
@@ -361,6 +368,12 @@ export function InventoryProductDetail({ product, initialSkuId, initialChannelId
             <footer className="sticky bottom-0 flex items-center justify-between gap-3 border-t border-slate-200 bg-white px-5 py-4"><button type="button" onClick={() => setRequestOpen(false)} className="px-4 py-2.5 text-xs font-bold text-slate-500">취소</button><button type="button" onClick={sendTransferRequest} disabled={requestState !== 'IDLE' || transferableQuantity <= 0} className="inline-flex min-w-44 items-center justify-center gap-2 rounded-xl bg-[#0F4C3A] px-5 py-3 text-xs font-bold text-white shadow-sm disabled:bg-emerald-700 disabled:opacity-70"><Send className="h-4 w-4" />{requestState === 'SENDING' ? 'Teams 전송 중' : requestState === 'SENT' ? '검토 요청 전송 완료' : 'Teams로 검토 요청'}</button></footer>
           </section>
         </div>
+      )}
+      {bundleOpen && selectedChannel && (
+        <InventoryBundleModal
+          selectedItems={[{ product, sku: selectedSku, channel: selectedChannel }]}
+          onClose={() => setBundleOpen(false)}
+        />
       )}
     </div>
   );

@@ -3,6 +3,7 @@
 import { useMemo } from 'react';
 import Link from 'next/link';
 import { AppLayout } from '@/components/layout/app-layout';
+import { CenterInventoryMap } from '@/components/dashboard/center-inventory-map';
 import { MOCK_INVENTORY_ITEMS, MOCK_OPTIMIZATION_CASES } from '@/lib/mock-data';
 import { 
   TrendingUp, 
@@ -176,6 +177,8 @@ export default function DashboardPage() {
             </div>
           </div>
         </div>
+
+        <CenterInventoryMap />
 
         {/* Middle Main Content: Floor Pipeline & AI Recommended Top Risk */}
         <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">

@@ -132,10 +132,10 @@ export const AFFILIATE_META: Record<InventoryAffiliate, {
 };
 
 export const RISK_META: Record<SkuRiskStatus, { label: string; className: string }> = {
-  SAFE: { label: '양호', className: 'border-emerald-300 bg-emerald-50 text-emerald-700' },
-  CAUTION: { label: '보통', className: 'border-yellow-400 bg-yellow-50 text-yellow-800' },
-  WARNING: { label: '주의', className: 'border-orange-300 bg-orange-50 text-orange-700' },
-  CRITICAL: { label: '위험', className: 'border-red-300 bg-red-50 text-red-600' },
+  SAFE: { label: '양호', className: 'border-emerald-400 bg-emerald-50 text-emerald-800' },
+  CAUTION: { label: '보통', className: 'border-yellow-500 bg-yellow-50 text-yellow-900' },
+  WARNING: { label: '주의', className: 'border-orange-400 bg-orange-50 text-orange-800' },
+  CRITICAL: { label: '위험', className: 'border-red-400 bg-red-50 text-red-700' },
 };
 
 export const INVENTORY_PRODUCTS: InventoryProduct[] = [

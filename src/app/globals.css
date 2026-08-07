@@ -41,6 +41,41 @@ body {
   line-height: 1.2rem;
 }
 
+/* Inventory screens contain dense operational data. Keep secondary labels readable
+   on white and tinted surfaces instead of relying on very light gray text. */
+.inventory-accessible .text-\[9px\] {
+  font-size: 0.6875rem !important;
+  line-height: 0.95rem !important;
+}
+
+.inventory-accessible .text-\[10px\] {
+  font-size: 0.75rem !important;
+  line-height: 1rem !important;
+}
+
+.inventory-accessible .text-\[11px\] {
+  font-size: 0.75rem !important;
+  line-height: 1.05rem !important;
+}
+
+.inventory-accessible .text-slate-300,
+.inventory-accessible .text-slate-400 {
+  color: #64748b !important;
+}
+
+.inventory-accessible .text-slate-500 {
+  color: #475569 !important;
+}
+
+.inventory-accessible input::placeholder {
+  color: #64748b;
+  opacity: 1;
+}
+
+.inventory-accessible button:disabled {
+  opacity: 1;
+}
+
 ::-webkit-scrollbar {
   width: 8px;
   height: 8px;
