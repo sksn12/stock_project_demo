@@ -42,17 +42,17 @@ export const CHANNEL_TYPE_META: Record<SalesChannelType, {
   ONLINE: {
     label: '온라인',
     description: '그리팅몰·외부 온라인몰',
-    className: 'border-sky-200 bg-sky-50 text-sky-700',
+    className: 'border-sky-300 bg-sky-50 text-sky-800',
   },
   OFFLINE: {
     label: '오프라인',
     description: '현대백화점 식품관',
-    className: 'border-amber-200 bg-amber-50 text-amber-700',
+    className: 'border-amber-300 bg-amber-50 text-amber-900',
   },
   CENTER: {
     label: '물류센터',
     description: '채널 미할당·이동 대기 재고',
-    className: 'border-emerald-200 bg-emerald-50 text-emerald-700',
+    className: 'border-emerald-300 bg-emerald-50 text-emerald-800',
   },
 };
 
@@ -60,9 +60,9 @@ export const INVENTORY_HEALTH_META: Record<InventoryHealth, {
   label: string;
   className: string;
 }> = {
-  SURPLUS: { label: '과잉', className: 'border-rose-200 bg-rose-50 text-rose-700' },
-  BALANCED: { label: '적정', className: 'border-emerald-200 bg-emerald-50 text-emerald-700' },
-  SHORTAGE: { label: '부족 예상', className: 'border-amber-200 bg-amber-50 text-amber-800' },
+  SURPLUS: { label: '과잉', className: 'border-rose-300 bg-rose-50 text-rose-800' },
+  BALANCED: { label: '적정', className: 'border-emerald-300 bg-emerald-50 text-emerald-800' },
+  SHORTAGE: { label: '부족 예상', className: 'border-amber-300 bg-amber-50 text-amber-900' },
 };
 
 const LAST_SYNC = '2026.08.06 05:00';
