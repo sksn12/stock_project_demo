@@ -1,6 +1,7 @@
 import { getEffectiveSkuRiskStatus, InventorySku, SkuRiskStatus } from './inventory-control-data';
 
 export type SalesChannelType = 'ONLINE' | 'OFFLINE' | 'CENTER';
+export type InventoryLocationType = 'CENTER' | 'STORE';
 export type InventoryHealth = 'SURPLUS' | 'BALANCED' | 'SHORTAGE';
 export type TransferMode = 'REALLOCATION' | 'RT';
 
@@ -50,9 +51,26 @@ export const CHANNEL_TYPE_META: Record<SalesChannelType, {
     className: 'border-amber-300 bg-amber-50 text-amber-900',
   },
   CENTER: {
-    label: '물류센터',
-    description: '채널 미할당·이동 대기 재고',
+    label: '공용재고',
+    description: '판매 채널에 아직 할당되지 않은 물류센터 재고',
     className: 'border-emerald-300 bg-emerald-50 text-emerald-800',
+  },
+};
+
+export const INVENTORY_LOCATION_META: Record<InventoryLocationType, {
+  label: string;
+  description: string;
+  className: string;
+}> = {
+  CENTER: {
+    label: '물류센터',
+    description: '온라인 할당재고와 공용재고를 보관하는 출고 거점',
+    className: 'border-indigo-200 bg-indigo-50 text-indigo-700',
+  },
+  STORE: {
+    label: '매장',
+    description: '오프라인 판매처가 직접 보유한 운영재고',
+    className: 'border-amber-200 bg-amber-50 text-amber-800',
   },
 };
 
@@ -135,6 +153,24 @@ export function getTransferRecommendation(skuId: string) {
 
 export function getChannelInventoryItem(id: string) {
   return GREENFOOD_CHANNEL_INVENTORY.find((item) => item.id === id);
+}
+
+export function getInventoryLocationType(item: ChannelInventory): InventoryLocationType {
+  return item.channelType === 'OFFLINE' ? 'STORE' : 'CENTER';
+}
+
+export function getInventoryLocationName(item: ChannelInventory) {
+  return item.channelType === 'OFFLINE' ? item.channelName : item.fulfillmentCenter;
+}
+
+export function getInventoryAllocationLabel(item: ChannelInventory) {
+  if (item.channelType === 'ONLINE') return `${item.channelName} 할당`;
+  if (item.channelType === 'OFFLINE') return '매장 보유';
+  return '공용 미할당';
+}
+
+export function getTransferableStock(item: ChannelInventory) {
+  return Math.max(0, item.availableStock - item.safetyStock);
 }
 
 export function getDaysToStockout(item: ChannelInventory) {
