@@ -543,14 +543,6 @@ function UnifiedInventoryContent() {
       {inventoryView === "ALL" ? (
         <section className="overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-sm">
           <div className="flex flex-col gap-4 border-b border-slate-200 bg-slate-50/70 p-4 xl:flex-row xl:items-center xl:justify-between">
-            <div className="shrink-0">
-              <p className="text-sm font-extrabold text-slate-900">
-                판매 채널·재고 위치별 운영재고
-              </p>
-              <p className="mt-1 text-[10px] text-slate-500">
-                판매 채널과 실제 보관 위치를 구분해 SKU별 위험재고를 확인합니다.
-              </p>
-            </div>
             <div className="flex flex-1 flex-wrap items-center gap-2 xl:justify-end">
               <div className="relative min-w-[240px] flex-1 xl:max-w-sm">
                 <Search className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-slate-400" />

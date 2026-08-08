@@ -16,10 +16,25 @@ import {
   TrendingUp,
   X,
   ExternalLink,
-  Info,
   Zap,
   Activity
 } from 'lucide-react';
+
+type StrategyRecordStatus = 'EXECUTING' | 'FINISHED' | 'PRE_APPROVAL' | 'APPROVED';
+
+const recordStatusMeta: Record<StrategyRecordStatus, { label: string; className: string }> = {
+  EXECUTING: { label: '실행중', className: 'bg-amber-50 text-amber-800 border-amber-200' },
+  FINISHED: { label: '실행완료', className: 'bg-emerald-100 text-emerald-800 border-emerald-300' },
+  PRE_APPROVAL: { label: '승인 전', className: 'bg-slate-100 text-slate-700 border-slate-300' },
+  APPROVED: { label: '승인 완료', className: 'bg-sky-50 text-sky-800 border-sky-200' },
+};
+
+function getRecordStatus(strategyCase: OptimizationCase): StrategyRecordStatus {
+  if (strategyCase.status === 'FINISHED') return 'FINISHED';
+  if (strategyCase.status === 'EXECUTING') return 'EXECUTING';
+  if (strategyCase.status === 'APPROVED') return 'APPROVED';
+  return 'PRE_APPROVAL';
+}
 
 export default function StrategyExecutionPage() {
   const [statusFilter, setStatusFilter] = useState<string>('ALL');
@@ -35,16 +50,15 @@ export default function StrategyExecutionPage() {
     return null;
   });
 
-  // 실행 완료 / 실행 중 / 승인 완료 케이스 목록
+  // 승인 전부터 실행 완료까지의 전략 기록 목록
   const executedCases = MOCK_OPTIMIZATION_CASES.filter((c) =>
-    c.status === 'FINISHED' || c.status === 'EXECUTING' || c.status === 'APPROVED' || c.executionStatus === 'COMPLETED' || c.executionStatus === 'EXECUTING'
+    c.status === 'COMPLETED' || c.status === 'APPROVED' || c.status === 'EXECUTING' || c.status === 'FINISHED'
   );
 
   const filteredCases = executedCases.filter((c) => {
     const matchesStatus =
       statusFilter === 'ALL' ||
-      c.status === statusFilter ||
-      c.executionStatus === statusFilter;
+      getRecordStatus(c) === statusFilter;
 
     const matchesCompany =
       companyFilter === 'ALL' ||
@@ -70,7 +84,7 @@ export default function StrategyExecutionPage() {
         <div className="bg-white p-6 rounded-2xl border border-slate-200 shadow-xs flex flex-col md:flex-row md:items-center md:justify-between gap-4">
           <div>
             <h1 className="text-2xl font-bold text-slate-900 tracking-tight">
-              실행 전략 & 성과 관제
+              AI 전략 기록 & 성과
             </h1>
             <p className="text-xs text-slate-500 mt-1">
               최종 승인된 전략의 예상 수치와 실제 소진 결과의 오차를 관제하고 대비합니다.
@@ -82,7 +96,7 @@ export default function StrategyExecutionPage() {
               href="/strategy/history"
               className="px-4 py-2 text-xs font-bold text-slate-700 bg-white border border-slate-200 hover:bg-slate-100 rounded-xl transition-all shadow-2xs flex items-center gap-1.5 cursor-pointer"
             >
-              <span>수립 전략 기록 보기</span>
+              <span>AI 전략 및 시뮬레이션</span>
               <ArrowRight className="w-3.5 h-3.5 text-slate-500" />
             </Link>
           </div>
@@ -101,7 +115,7 @@ export default function StrategyExecutionPage() {
 
           <div className="bg-white border border-slate-200 rounded-xl p-4 shadow-xs">
             <div className="flex items-center justify-between text-xs text-slate-500 font-medium mb-1">
-              <span>실행 완료 (FINISHED)</span>
+              <span>실행완료</span>
               <CheckCircle2 className="w-4 h-4 text-emerald-600" />
             </div>
             <p className="text-2xl font-bold text-emerald-700 font-mono tabular-nums">{completedCount}건</p>
@@ -110,7 +124,7 @@ export default function StrategyExecutionPage() {
 
           <div className="bg-white border border-slate-200 rounded-xl p-4 shadow-xs">
             <div className="flex items-center justify-between text-xs text-slate-500 font-medium mb-1">
-              <span>현재 진행 중 (EXECUTING)</span>
+              <span>실행중</span>
               <TrendingUp className="w-4 h-4 text-amber-600" />
             </div>
             <p className="text-2xl font-bold text-amber-700 font-mono tabular-nums">{executingCount}건</p>
@@ -122,10 +136,11 @@ export default function StrategyExecutionPage() {
         <div className="bg-white border border-slate-200 rounded-xl p-4 flex flex-col md:flex-row md:items-center justify-between gap-3 shadow-xs">
           <div className="flex items-center gap-1.5 overflow-x-auto">
             {[
-              { id: 'ALL', label: '전체 실행 건' },
-              { id: 'EXECUTING', label: '실행 진행 중 (EXECUTING)' },
-              { id: 'FINISHED', label: '실행 완료 (FINISHED)' },
-              { id: 'APPROVED', label: '승인 완료 (APPROVED)' },
+              { id: 'ALL', label: '전체' },
+              { id: 'EXECUTING', label: '실행중' },
+              { id: 'FINISHED', label: '실행완료' },
+              { id: 'PRE_APPROVAL', label: '승인 전' },
+              { id: 'APPROVED', label: '승인 완료' },
             ].map((tab) => (
               <button
                 key={tab.id}
@@ -185,6 +200,15 @@ export default function StrategyExecutionPage() {
               const marginAchievePercent = Math.round((actualMargin / selectedOpt.expectedNetContributionMargin) * 100);
 
               const displayTitle = optCase.title.replace(/\s*\((실행\s*진행\s*중|실행\s*완료|실행\s*중|EXECUTING|FINISHED|COMPLETED)\)/gi, '');
+              const recordStatus = getRecordStatus(optCase);
+              const statusMeta = recordStatusMeta[recordStatus];
+              const periodMetric = optCase.id === 'CASE-2026-003'
+                ? { detail: '7/27 마감 (3일 초과 소요)', percent: 125, overdue: true }
+                : optCase.id === 'CASE-2026-004'
+                  ? { detail: '8/3 마감 (1일 지연 중)', percent: 150, overdue: true }
+                  : { detail: '8/5 마감 예정 (D-2)', percent: 83, overdue: false };
+              const salesStatus = salesProgressPercent >= 100 ? '목표 달성' : salesProgressPercent >= 70 ? '양호' : '확인 필요';
+              const marginStatus = marginAchievePercent >= 100 ? '목표 달성' : marginAchievePercent >= 80 ? '달성 임박' : '확인 필요';
 
               return (
                 <div
@@ -207,12 +231,8 @@ export default function StrategyExecutionPage() {
                         }`}>
                           {optCase.company || mainItem.company}
                         </span>
-                        <span className={`text-[10px] font-bold px-2 py-0.5 rounded border ${
-                          optCase.status === 'FINISHED' || optCase.executionStatus === 'COMPLETED'
-                            ? 'bg-emerald-100 text-emerald-800 border-emerald-300'
-                            : 'bg-amber-50 text-amber-800 border-amber-200'
-                        }`}>
-                          {optCase.status === 'FINISHED' || optCase.executionStatus === 'COMPLETED' ? '실행 완료 (FINISHED)' : '실행 진행 중 (EXECUTING)'}
+                        <span className={`text-[10px] font-bold px-2 py-0.5 rounded border ${statusMeta.className}`}>
+                          {statusMeta.label}
                         </span>
                       </div>
                       <h3 className="text-base font-bold text-slate-900">{displayTitle}</h3>
@@ -228,99 +248,42 @@ export default function StrategyExecutionPage() {
                     </div>
                   </div>
 
-                  {/* Visual Progress Bars: Graph Bars Original Colors, Text Color: Blue (Under), Black (Normal/Green), Red (Over) */}
-                  <div className="grid grid-cols-1 md:grid-cols-3 gap-4 bg-slate-50/70 p-4 rounded-xl border border-slate-200/80">
-                    
-                    {/* Progress 1: Qty Progress */}
-                    {(() => {
-                      const isUnder = salesProgressPercent < 100;
-                      const isOver = salesProgressPercent > 100;
-                      const textColorClass = isUnder ? 'text-blue-600' : isOver ? 'text-rose-600' : 'text-slate-900';
+                  <div className="grid grid-cols-1 gap-3 md:grid-cols-3">
+                    <div className="rounded-xl border border-slate-200 bg-slate-50/80 p-4">
+                      <div className="flex items-center justify-between gap-3 text-[11px]">
+                        <span className="inline-flex items-center gap-1.5 font-bold text-slate-600"><Activity className="h-4 w-4 text-blue-600" />목표 수량 소진율</span>
+                        <span className="font-mono text-slate-500">({actualSales}/{selectedOpt.expectedSalesQty}개)</span>
+                      </div>
+                      <div className="mt-3 flex items-center justify-between gap-3">
+                        <strong className="font-mono text-2xl font-black text-slate-950">{salesProgressPercent}%</strong>
+                        <span className={`rounded px-2 py-1 text-[10px] font-bold ${salesProgressPercent >= 70 ? 'bg-emerald-100 text-emerald-800' : 'bg-amber-100 text-amber-800'}`}>{salesStatus}</span>
+                      </div>
+                      <div className="mt-3 h-2 overflow-hidden rounded-full bg-slate-200"><div className="h-full rounded-full bg-emerald-500 transition-all duration-500" style={{ width: `${Math.min(100, salesProgressPercent)}%` }} /></div>
+                    </div>
 
-                      return (
-                        <div className="space-y-1.5">
-                          <div className="flex justify-between items-center text-xs">
-                            <span className="font-bold text-slate-700 shrink-0">목표 수량 소진율</span>
-                            <span className={`font-mono font-bold truncate text-right ${textColorClass}`}>
-                              {salesProgressPercent}% <span className="text-slate-500 font-normal">({actualSales}/{selectedOpt.expectedSalesQty}개)</span>
-                            </span>
-                          </div>
-                          <div className="w-full bg-slate-200 h-2 rounded-full overflow-hidden">
-                            <div
-                              className="bg-[#0F4C3A] h-full rounded-full transition-all duration-500"
-                              style={{ width: `${Math.min(100, salesProgressPercent)}%` }}
-                            ></div>
-                          </div>
-                        </div>
-                      );
-                    })()}
+                    <div className="rounded-xl border border-slate-200 bg-slate-50/80 p-4">
+                      <div className="flex items-center justify-between gap-3 text-[11px]">
+                        <span className="inline-flex items-center gap-1.5 font-bold text-slate-600"><AlertCircle className={`h-4 w-4 ${periodMetric.overdue ? 'text-rose-600' : 'text-amber-600'}`} />목표 기간 경과율</span>
+                        <span className={`font-medium ${periodMetric.overdue ? 'text-rose-600' : 'text-slate-500'}`}>{periodMetric.detail}</span>
+                      </div>
+                      <div className="mt-3 flex items-center justify-between gap-3">
+                        <strong className={`font-mono text-2xl font-black ${periodMetric.overdue ? 'text-rose-600' : 'text-slate-950'}`}>{periodMetric.percent}%</strong>
+                        <span className={`rounded px-2 py-1 text-[10px] font-bold ${periodMetric.overdue ? 'bg-rose-100 text-rose-700' : 'bg-emerald-100 text-emerald-800'}`}>{periodMetric.overdue ? '기한 초과' : '정상 진행'}</span>
+                      </div>
+                      <div className="mt-3 h-2 overflow-hidden rounded-full bg-slate-200"><div className={`h-full rounded-full transition-all duration-500 ${periodMetric.overdue ? 'bg-rose-500' : 'bg-amber-500'}`} style={{ width: `${Math.min(100, periodMetric.percent)}%` }} /></div>
+                    </div>
 
-                    {/* Progress 2: Execution Days */}
-                    {(() => {
-                      let diffText = '8/5 마감 예정 (D-2)';
-                      let progressPercent = 83;
-                      let isOverdue = false;
-
-                      if (optCase.id === 'CASE-2026-003') {
-                        diffText = '7/27 마감 (3일 초과 소요)';
-                        progressPercent = 125;
-                        isOverdue = true;
-                      } else if (optCase.id === 'CASE-2026-004') {
-                        diffText = '8/3 마감 (1일 지연 중)';
-                        progressPercent = 150;
-                        isOverdue = true;
-                      } else {
-                        diffText = '8/5 마감 예정 (D-2)';
-                        progressPercent = 83;
-                        isOverdue = false;
-                      }
-
-                      const isUnder = progressPercent < 100;
-                      const textColorClass = isUnder ? 'text-blue-600' : progressPercent > 100 ? 'text-rose-600' : 'text-slate-900';
-
-                      return (
-                        <div className="space-y-1.5 min-w-0">
-                          <div className="flex justify-between items-center text-xs gap-2">
-                            <span className="font-bold text-slate-700 shrink-0">목표 기간 경과율</span>
-                            <span className={`font-mono font-bold truncate text-right ${textColorClass}`}>
-                              {progressPercent}% <span className="text-slate-500 font-normal">({diffText})</span>
-                            </span>
-                          </div>
-                          <div className="w-full bg-slate-200 h-2 rounded-full overflow-hidden">
-                            <div
-                              className={`h-full rounded-full transition-all duration-500 ${
-                                isOverdue ? 'bg-rose-600' : 'bg-amber-600'
-                              }`}
-                              style={{ width: `${Math.min(100, progressPercent)}%` }}
-                            ></div>
-                          </div>
-                        </div>
-                      );
-                    })()}
-
-                    {/* Progress 3: Margin Achievement */}
-                    {(() => {
-                      const isUnder = marginAchievePercent < 100;
-                      const isOver = marginAchievePercent > 100;
-                      const textColorClass = isUnder ? 'text-blue-600' : isOver ? 'text-rose-600' : 'text-slate-900';
-
-                      return (
-                        <div className="space-y-1.5">
-                          <div className="flex justify-between items-center text-xs">
-                            <span className="font-bold text-slate-700 shrink-0">목표 증분이익 달성률</span>
-                            <span className={`font-mono font-bold truncate text-right ${textColorClass}`}>
-                              {marginAchievePercent}% <span className="text-slate-500 font-normal">(₩{Math.round(actualMargin/10000)}만/₩{Math.round(selectedOpt.expectedNetContributionMargin/10000)}만)</span>
-                            </span>
-                          </div>
-                          <div className="w-full bg-slate-200 h-2 rounded-full overflow-hidden">
-                            <div
-                              className="bg-emerald-600 h-full rounded-full transition-all duration-500"
-                              style={{ width: `${Math.min(100, marginAchievePercent)}%` }}
-                            ></div>
-                          </div>
-                        </div>
-                      );
-                    })()}
+                    <div className="rounded-xl border border-slate-200 bg-slate-50/80 p-4">
+                      <div className="flex items-center justify-between gap-3 text-[11px]">
+                        <span className="inline-flex items-center gap-1.5 font-bold text-slate-600"><TrendingUp className="h-4 w-4 text-emerald-600" />목표 증분이익 달성률</span>
+                        <span className="font-mono text-slate-500">(₩{Math.round(actualMargin / 10000).toLocaleString()}만 / ₩{Math.round(selectedOpt.expectedNetContributionMargin / 10000).toLocaleString()}만)</span>
+                      </div>
+                      <div className="mt-3 flex items-center justify-between gap-3">
+                        <strong className="font-mono text-2xl font-black text-slate-950">{marginAchievePercent}%</strong>
+                        <span className={`rounded px-2 py-1 text-[10px] font-bold ${marginAchievePercent >= 80 ? 'bg-emerald-100 text-emerald-800' : 'bg-amber-100 text-amber-800'}`}>{marginStatus}</span>
+                      </div>
+                      <div className="mt-3 h-2 overflow-hidden rounded-full bg-slate-200"><div className="h-full rounded-full bg-emerald-500 transition-all duration-500" style={{ width: `${Math.min(100, marginAchievePercent)}%` }} /></div>
+                    </div>
                   </div>
 
                   {/* Target Reach Success/Failure Badge ONLY for FINISHED Cases */}
@@ -338,24 +301,21 @@ export default function StrategyExecutionPage() {
                     </div>
                   )}
 
-                  {/* Summary Reason Bar */}
-                  <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 text-xs">
-                    <div className="flex items-center gap-1.5 text-slate-700 bg-slate-50 border border-slate-200 px-3 py-2 rounded-lg text-xs flex-1">
-                      <Info className="w-3.5 h-3.5 text-slate-500 shrink-0" />
-                      <span className="font-medium truncate">
-                        분석 사유: {optCase.varianceReason || '메인 기획전 배너 클릭률 저조로 목표 대비 지연 중'}
+                  <div className={`flex flex-col gap-3 rounded-xl border px-4 py-3 text-xs sm:flex-row sm:items-center sm:justify-between ${periodMetric.overdue ? 'border-amber-300 bg-amber-50 text-amber-950' : 'border-slate-200 bg-slate-50 text-slate-700'}`}>
+                    <div className="flex min-w-0 items-center gap-2">
+                      <AlertCircle className={`h-4 w-4 shrink-0 ${periodMetric.overdue ? 'text-amber-600' : 'text-slate-500'}`} />
+                      <span className="truncate font-medium">
+                        <strong className="mr-1">[{periodMetric.overdue ? '기간 지연 경고' : '성과 관제'}]</strong>
+                        {optCase.varianceReason || '메인 기획전 반응과 실제 판매 성과를 지속 관제 중입니다.'}
                       </span>
                     </div>
-
-                    <div className="flex items-center gap-2 shrink-0">
-                      <button
-                        onClick={() => setSelectedCase(optCase)}
-                        className="px-4 py-2 bg-[#0F4C3A] hover:bg-[#0B392B] text-white rounded-xl font-bold text-xs flex items-center gap-1.5 shadow-2xs transition-all cursor-pointer"
-                      >
-                        <span>상세 관제 & 오차 분석 (팝업)</span>
-                        <ExternalLink className="w-3.5 h-3.5" />
-                      </button>
-                    </div>
+                    <button
+                      onClick={() => setSelectedCase(optCase)}
+                      className="inline-flex shrink-0 items-center justify-center gap-1.5 rounded-lg bg-slate-900 px-4 py-2 text-[11px] font-bold text-white transition hover:bg-slate-800 cursor-pointer"
+                    >
+                      <span>상세 관제 & 오차 분석</span>
+                      <ExternalLink className="h-3.5 w-3.5" />
+                    </button>
                   </div>
                 </div>
               );

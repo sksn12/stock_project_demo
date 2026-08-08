@@ -1,6 +1,19 @@
 export type StrategyTargetType = 'SKU' | 'BUNDLE';
 export type StrategyGoal = 'FAST' | 'MARGIN' | 'REVENUE';
-export type StrategyStatus = 'APPROVED' | 'READY' | 'GENERATING';
+export type StrategyStatus = 'APPROVED' | 'APPROVING' | 'READY' | 'GENERATING';
+
+export interface StrategyHistoryRow {
+  id: string;
+  caseId: string;
+  type: '개별' | '번들';
+  title: string;
+  affiliate: string;
+  category: string;
+  productName: string;
+  status: StrategyStatus;
+  createdAt: string;
+  href?: string;
+}
 
 export interface StrategySubject {
   targetType: StrategyTargetType;
@@ -114,10 +127,9 @@ export function simulateStrategy(subject: StrategySubject, candidate: StrategyCa
   return { expectedSales, expectedRevenue, variableCost, contributionProfit, contributionMarginRate, sellThroughRate, liquidationDays, remainingQty };
 }
 
-export const STRATEGY_HISTORY_ROWS = [
-  { id: 'ST-2026-028', caseId: 'CASE-2026-001', type: '개별', title: '저당 국·탕 재고 균형 판매', affiliate: '현대그린푸드', category: '케어푸드', productName: '버섯 들깨탕 6팩', status: 'APPROVED' as StrategyStatus, createdAt: '2026.08.07' },
-  { id: 'ST-2026-027', caseId: 'CASE-2026-002', type: '번들', title: '그리팅 든든 한상 번들 전략', affiliate: '현대그린푸드', category: '번들', productName: '도시락 + 저당 국·탕 외 1건', status: 'READY' as StrategyStatus, createdAt: '2026.08.06' },
-  { id: 'ST-2026-026', caseId: 'OPT-PROFIT-1', type: '개별', title: '프리미엄 샐러드 폐기 방어', affiliate: '현대그린푸드', category: '신선식품', productName: '그린믹스 5팩', status: 'APPROVED' as StrategyStatus, createdAt: '2026.08.05' },
-  { id: 'ST-2026-025', caseId: 'OPT-FAST-1', type: '개별', title: '오프라인 재고 재할당 전략', affiliate: '현대그린푸드', category: '도시락', productName: '두부버섯 도시락 350g', status: 'GENERATING' as StrategyStatus, createdAt: '2026.08.04' },
-  { id: 'ST-2026-024', caseId: 'OPT-REV-1', type: '번들', title: '프리미엄 케어푸드 번들 전략', affiliate: '현대그린푸드', category: '번들', productName: '영양균형 도시락 외 2건', status: 'READY' as StrategyStatus, createdAt: '2026.08.03' },
+export const STRATEGY_HISTORY_ROWS: StrategyHistoryRow[] = [
+  { id: 'ST-2026-028', caseId: 'CASE-2026-001', type: '개별', title: '저당 국·탕 판교점 재할당 전략', affiliate: '현대그린푸드', category: '케어푸드', productName: '버섯 들깨탕 6팩', status: 'APPROVING', createdAt: '2026.08.07' },
+  { id: 'ST-2026-027', caseId: 'CASE-2026-002', type: '번들', title: '그리팅 든든 한상 번들 전략', affiliate: '현대그린푸드', category: '번들', productName: '도시락 + 저당 국·탕 외 1건', status: 'READY', createdAt: '2026.08.06' },
+  { id: 'ST-2026-025', caseId: 'OPT-FAST-1', type: '개별', title: '오프라인 재고 재할당 전략', affiliate: '현대그린푸드', category: '도시락', productName: '두부버섯 도시락 350g', status: 'GENERATING', createdAt: '2026.08.04' },
+  { id: 'ST-2026-024', caseId: 'OPT-REV-1', type: '번들', title: '프리미엄 케어푸드 번들 전략', affiliate: '현대그린푸드', category: '번들', productName: '영양균형 도시락 외 2건', status: 'READY', createdAt: '2026.08.03' },
 ];

@@ -115,7 +115,9 @@ export function Sidebar({ isOpen, onClose }: SidebarProps) {
               <Link
                 key={item.href}
                 href={item.href}
-                onClick={onClose}
+                onClick={() => {
+                  if (window.matchMedia("(max-width: 767px)").matches) onClose();
+                }}
                 title={isOpen ? undefined : item.name}
                 className={`flex items-center rounded-lg text-xs font-medium transition-all ${
                   isActive
