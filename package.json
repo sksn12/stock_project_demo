@@ -49,10 +49,5 @@
     "typescript": "^5.7.3",
     "vite": "latest",
     "vitest": "latest"
-  },
-  "eslintConfig": {
-    "extends": [
-      "plugin:storybook/recommended"
-    ]
   }
 }
