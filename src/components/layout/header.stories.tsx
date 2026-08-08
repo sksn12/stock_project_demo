@@ -28,9 +28,9 @@ export const StrategyCollapsed: Story = {
   parameters: { nextjs: { navigation: { pathname: '/strategy/history' } } },
 };
 
-export const CssCheck: Story = {
+export const InventoryUserContext: Story = {
   play: async ({ canvas }) => {
-    const badge = canvas.getByText('재고최적화');
-    await expect(getComputedStyle(badge).backgroundColor).toBe('rgb(15, 76, 58)');
+    await expect(canvas.getByText('김영만 수석 MD')).toBeVisible();
+    await expect(canvas.getByText('현대그린푸드 재고운영')).toBeVisible();
   },
 };

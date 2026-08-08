@@ -1,4 +1,5 @@
 import type { Metadata } from 'next';
+import { AppLayoutProvider } from '@/components/layout/app-layout-context';
 import './globals.css';
 
 export const metadata: Metadata = {
@@ -14,7 +15,7 @@ export default function RootLayout({
   return (
     <html lang="ko" className="dark">
       <body className="bg-[#090d0b] text-zinc-100 antialiased selection:bg-[#0F4C3A] selection:text-white">
-        {children}
+        <AppLayoutProvider>{children}</AppLayoutProvider>
       </body>
     </html>
   );
