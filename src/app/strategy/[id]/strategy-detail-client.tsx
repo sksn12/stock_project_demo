@@ -18,7 +18,11 @@ import {
   RotateCcw,
   SlidersHorizontal,
   Truck,
-  X
+  X,
+  Activity,
+  CalendarClock,
+  TrendingUp,
+  PlayCircle,
 } from 'lucide-react';
 
 type FallbackStep = {
@@ -387,6 +391,23 @@ export default function StrategyDetailPage() {
     return scenarioGroups.flatMap((g) => g.options);
   }, [scenarioGroups]);
 
+  const finalSelectedOption = useMemo(() => {
+    return caseData.options.find((option) => option.id === caseData.selectedOptionId) ?? caseData.options[0];
+  }, [caseData]);
+
+  const finalScenarioOptionId = useMemo(() => {
+    const groupKeyByType: Record<StrategyOption['type'], string> = {
+      PURE_PROFIT: 'PURE_PROFIT',
+      FAST_LIQUIDATION: 'FAST_LIQUIDATION',
+      MAX_REVENUE: 'MAX_REVENUE',
+    };
+    return scenarioGroups.find((group) => group.categoryKey === groupKeyByType[finalSelectedOption.type])?.options[0]?.id;
+  }, [finalSelectedOption.type, scenarioGroups]);
+
+  const executionProgress = Math.min(100, Math.round(((caseData.actualSalesQty ?? 0) / Math.max(1, finalSelectedOption.expectedSalesQty)) * 100));
+  const contributionProgress = Math.round(((caseData.actualNetContributionMargin ?? 0) / Math.max(1, finalSelectedOption.expectedNetContributionMargin)) * 100);
+  const executionStatusLabel = caseData.executionStatus === 'COMPLETED' ? '실행 완료' : caseData.executionStatus === 'FAILED' ? '확인 필요' : caseData.executionStatus === 'EXECUTING' ? '실행·추적 중' : '실행 대기';
+
   // 카테고리 탭 선택 상태 ('ALL' | 'PURE_PROFIT' | 'FAST_LIQUIDATION' | 'MAX_REVENUE')
   const [selectedCategoryTab, setSelectedCategoryTab] = useState<string>('ALL');
 
@@ -490,6 +511,53 @@ export default function StrategyDetailPage() {
           </div>
         </div>
 
+        {/* Approved final strategy & live execution tracking */}
+        <section className="overflow-hidden rounded-2xl border border-[#0F4C3A]/25 bg-white shadow-sm">
+          <div className="flex flex-col gap-4 bg-[#0F4C3A] px-6 py-5 text-white lg:flex-row lg:items-center lg:justify-between">
+            <div className="min-w-0">
+              <div className="flex flex-wrap items-center gap-2">
+                <span className="inline-flex items-center gap-1 rounded-full bg-white/15 px-2.5 py-1 text-[10px] font-black"><CheckCircle2 className="h-3.5 w-3.5" />최종 선택 전략</span>
+                <span className="inline-flex items-center gap-1 rounded-full bg-emerald-300/15 px-2.5 py-1 text-[10px] font-black text-emerald-100"><Activity className="h-3.5 w-3.5" />{executionStatusLabel}</span>
+              </div>
+              <h2 className="mt-3 truncate text-lg font-black">{finalSelectedOption.name}</h2>
+              <p className="mt-1 text-xs text-emerald-100">{finalSelectedOption.targetChannel} · 할인 {finalSelectedOption.discountRate}% · 목표 {finalSelectedOption.expectedSalesQty}개</p>
+            </div>
+            <button type="button" onClick={() => router.push('/strategy/execution')} className="inline-flex shrink-0 items-center justify-center gap-1.5 rounded-xl border border-white/25 bg-white px-4 py-2.5 text-xs font-black text-[#0F4C3A] hover:bg-emerald-50"><PlayCircle className="h-4 w-4" />실행 성과 관제 열기</button>
+          </div>
+
+          <div className="grid gap-0 lg:grid-cols-[minmax(0,1.35fr)_minmax(420px,1fr)]">
+            <div className="border-b border-slate-200 p-6 lg:border-b-0 lg:border-r">
+              <div className="flex items-end justify-between gap-4">
+                <div><p className="text-xs font-bold text-slate-500">누적 판매 달성률</p><p className="mt-1 text-3xl font-black text-slate-950">{executionProgress}%</p></div>
+                <p className="text-right text-xs text-slate-500"><strong className="text-base text-slate-900">{caseData.actualSalesQty ?? 0}개</strong> 판매<br />목표 {finalSelectedOption.expectedSalesQty}개</p>
+              </div>
+              <div className="mt-4 h-3 overflow-hidden rounded-full bg-slate-100" aria-label={`누적 판매 달성률 ${executionProgress}%`}><div className="h-full rounded-full bg-[#0F4C3A] transition-all" style={{ width: `${executionProgress}%` }} /></div>
+              <div className="mt-5 grid grid-cols-3 gap-3">
+                <div className="rounded-xl bg-slate-50 p-3"><p className="flex items-center gap-1 text-[10px] font-bold text-slate-500"><CalendarClock className="h-3.5 w-3.5" />실행 기간</p><p className="mt-2 text-xs font-black text-slate-900">{caseData.executionStartDate ?? '-'}<br />~ {caseData.executionEndDate ?? '-'}</p></div>
+                <div className="rounded-xl bg-slate-50 p-3"><p className="flex items-center gap-1 text-[10px] font-bold text-slate-500"><TrendingUp className="h-3.5 w-3.5" />기여이익 달성</p><p className={`mt-2 text-lg font-black ${contributionProgress < 0 ? 'text-rose-700' : 'text-slate-900'}`}>{contributionProgress}%</p></div>
+                <div className="rounded-xl bg-slate-50 p-3"><p className="text-[10px] font-bold text-slate-500">현재 잔여재고</p><p className="mt-2 text-lg font-black text-slate-900">{caseData.actualRemainingQty ?? Math.max(0, caseData.targetItems[0].quantity - (caseData.actualSalesQty ?? 0))}개</p></div>
+              </div>
+            </div>
+
+            <div className="p-6">
+              <div className="flex items-center justify-between"><h3 className="text-sm font-black text-slate-950">승인·실행 이력</h3><span className="text-[10px] font-bold text-slate-500">최근 갱신 2026.08.07 10:30</span></div>
+              <ol className="mt-5 space-y-4">
+                {[
+                  { label: 'AI 전략 생성', meta: caseData.createdAt, done: true },
+                  { label: '최종안 승인', meta: `${caseData.approverName ?? '담당자'} · ${caseData.approvedAt ?? '-'}`, done: true },
+                  { label: '프로모션 실행', meta: `${caseData.executionStartDate ?? '-'} 시작`, done: caseData.executionStatus !== 'NOT_STARTED' },
+                  { label: '성과 추적', meta: `판매 ${caseData.actualSalesQty ?? 0}개 · 목표 대비 ${executionProgress}%`, current: caseData.executionStatus === 'EXECUTING' },
+                ].map((step, index) => (
+                  <li key={step.label} className="flex gap-3">
+                    <div className="flex flex-col items-center"><span className={`mt-0.5 flex h-5 w-5 items-center justify-center rounded-full ${step.current ? 'bg-amber-500 ring-4 ring-amber-100' : step.done ? 'bg-[#0F4C3A]' : 'bg-slate-200'}`}>{step.done && !step.current ? <Check className="h-3 w-3 text-white" /> : <span className="h-1.5 w-1.5 rounded-full bg-white" />}</span>{index < 3 && <span className="mt-1 h-6 w-px bg-slate-200" />}</div>
+                    <div><p className={`text-xs font-black ${step.current ? 'text-amber-700' : 'text-slate-800'}`}>{step.label}{step.current ? ' · 진행 중' : ''}</p><p className="mt-0.5 text-[10px] text-slate-500">{step.meta}</p></div>
+                  </li>
+                ))}
+              </ol>
+            </div>
+          </div>
+        </section>
+
         {/* Category Tabs */}
         <div className="flex items-center justify-between border-b border-slate-200 pb-2">
           <div className="flex items-center gap-2 overflow-x-auto">
@@ -538,6 +606,7 @@ export default function StrategyDetailPage() {
                   {group.options.map((opt) => {
                     const isChecked = selectedOptionIds.includes(opt.id);
                     const isActive = activeOptionId === opt.id;
+                    const isFinal = finalScenarioOptionId === opt.id;
                     const color = OPTION_COLORS[opt.id] || '#0F4C3A';
 
                     return (
@@ -559,6 +628,11 @@ export default function StrategyDetailPage() {
                               <span className="text-[10px] font-bold text-[#9E7C3B] bg-amber-50 px-1.5 py-0.5 rounded border border-amber-200 flex items-center gap-0.5">
                                 <Award className="w-3 h-3" />
                                 <span>AI 추천</span>
+                              </span>
+                            )}
+                            {isFinal && (
+                              <span className="flex items-center gap-0.5 rounded border border-[#0F4C3A]/20 bg-emerald-100 px-1.5 py-0.5 text-[10px] font-black text-[#0F4C3A]">
+                                <CheckCircle2 className="h-3 w-3" />최종 선택
                               </span>
                             )}
                           </div>
@@ -602,7 +676,7 @@ export default function StrategyDetailPage() {
                         <div className="flex items-center justify-between text-[11px]">
                           <span className="text-slate-400">신뢰도 {opt.confidenceScore}%</span>
                           {isActive ? (
-                            <span className="font-bold text-[#0F4C3A] bg-emerald-100 px-2 py-0.5 rounded">● 현재 대표 선택</span>
+                            <span className="font-bold text-[#0F4C3A] bg-emerald-100 px-2 py-0.5 rounded">● 현재 살펴보는 대안</span>
                           ) : (
                             <span className="text-slate-700 font-bold">클릭 시 시뮬레이션</span>
                           )}
@@ -633,7 +707,7 @@ export default function StrategyDetailPage() {
         {/* Dynamic Active Scenario Summary */}
         <div className="bg-[#0F4C3A] text-white p-5 rounded-2xl shadow-md grid grid-cols-1 sm:grid-cols-4 gap-4 text-center">
           <div className="border-r border-emerald-700/60 last:border-0 pr-2">
-            <p className="text-[11px] text-emerald-100">현재 선택된 대표 대안</p>
+            <p className="text-[11px] text-emerald-100">현재 살펴보는 비교 대안</p>
             <p className="text-base font-bold truncate mt-0.5">{activeOption.name}</p>
           </div>
           <div className="border-r border-emerald-700/60 last:border-0 pr-2">

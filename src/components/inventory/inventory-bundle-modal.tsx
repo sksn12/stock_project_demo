@@ -5,24 +5,21 @@ import {
   AlertTriangle,
   Ban,
   CheckCircle2,
-  ChevronDown,
   CircleDollarSign,
   ImageOff,
   Layers3,
-  MessageSquareShare,
   Minus,
   PackageCheck,
   Plus,
   Save,
   Search,
-  Send,
   Sparkles,
   Trash2,
-  Users,
   X,
 } from 'lucide-react';
 import type { InventoryProduct, InventorySku } from '@/lib/inventory-control-data';
 import { INVENTORY_PRODUCTS, SKU_OPERATION_DATA } from '@/lib/inventory-control-data';
+import type { BundleInventoryRecord } from '@/lib/bundle-inventory-data';
 import {
   CHANNEL_TYPE_META,
   GREENFOOD_CHANNEL_INVENTORY,
@@ -38,7 +35,7 @@ export interface BundleSourceItem {
 interface InventoryBundleModalProps {
   selectedItems: BundleSourceItem[];
   onClose: () => void;
-  onSaved?: (bundleCode: string) => void;
+  onSaved?: (bundle: BundleInventoryRecord) => void;
 }
 
 interface ValidationItem {
@@ -84,10 +81,6 @@ export function InventoryBundleModal({ selectedItems, onClose, onSaved }: Invent
   const [saved, setSaved] = useState(false);
   const [candidateTab, setCandidateTab] = useState<'RECOMMENDED' | 'SEARCH'>('RECOMMENDED');
   const [candidateQuery, setCandidateQuery] = useState('');
-  const [teamsChannel, setTeamsChannel] = useState('재고전략-통합운영');
-  const [teamsMessage, setTeamsMessage] = useState('');
-  const [teamsShareState, setTeamsShareState] = useState<'IDLE' | 'SENDING' | 'SENT'>('IDLE');
-  const [teamsSharedAt, setTeamsSharedAt] = useState('');
   const bundleCode = 'BND-20260806-001';
   const baseChannelId = selectedItems[0]?.channel.id;
 
@@ -193,19 +186,30 @@ export function InventoryBundleModal({ selectedItems, onClose, onSaved }: Invent
   const saveDraft = () => {
     if (!canSave) return;
     setSaved(true);
-    setTeamsMessage(`[번들 초안 검토 요청] ${bundleName}\n${bundleCode} · ${items.length}개 SKU\n번들 판매가 ${formatCurrency(bundleSellingPrice)} · 단위 공헌이익 ${formatCurrency(expectedProfit)} (${marginRate}%)`);
-    setTeamsShareState('IDLE');
-    setTeamsSharedAt('');
-    onSaved?.(bundleCode);
-  };
-
-  const shareToTeams = () => {
-    if (!saved || !teamsMessage.trim() || teamsShareState !== 'IDLE') return;
-    setTeamsShareState('SENDING');
-    window.setTimeout(() => {
-      setTeamsShareState('SENT');
-      setTeamsSharedAt(new Date().toLocaleString('ko-KR', { hour12: false }));
-    }, 850);
+    const fulfillmentCenters = [...new Set(items.map((item) => item.channel.fulfillmentCenter))];
+    onSaved?.({
+      bundleCode,
+      bundleName: bundleName.trim(),
+      status: 'DRAFT',
+      items: items.map((item) => ({
+        skuId: item.sku.id,
+        channelId: item.channel.id,
+        skuCode: item.sku.code,
+        productName: item.product.name,
+        optionLabel: item.sku.optionLabel,
+        quantityPerBundle: quantities[item.channel.id] ?? 1,
+        availableStock: item.channel.availableStock,
+        unit: item.sku.unit,
+        channelName: item.channel.channelName,
+      })),
+      listPrice,
+      sellingPrice: bundleSellingPrice,
+      estimatedProfit: expectedProfit,
+      marginRate: marginRate ?? 0,
+      availableBundleStock: maxBundleQuantity,
+      fulfillmentCenter: fulfillmentCenters.length === 1 ? fulfillmentCenters[0] : '다중 물류센터',
+      createdAt: new Date().toLocaleString('ko-KR', { hour12: false }),
+    });
   };
 
   return (
@@ -350,19 +354,7 @@ export function InventoryBundleModal({ selectedItems, onClose, onSaved }: Invent
                 </div>
 
                 {expectedProfit < 0 && bundleSellingPrice > 0 && <div className="mt-3 flex items-start gap-2 rounded-xl border border-rose-300 bg-rose-50 p-3 text-[9px] font-semibold leading-4 text-rose-900"><AlertTriangle className="mt-0.5 h-3.5 w-3.5 shrink-0" />현재 번들 판매가로 판매할 경우 판매 1건당 {formatCurrency(Math.abs(expectedProfit))}의 손실이 발생합니다. 가격 또는 구성 수량을 조정해 주세요.</div>}
-                {saved && (
-                  <div className="mt-3 space-y-3">
-                    <div className="rounded-xl border border-emerald-300 bg-emerald-50 p-3 text-[10px] font-semibold leading-4 text-emerald-900"><strong>{bundleCode}</strong> 번들 초안이 저장되었습니다. 판매채널·운영 기간·할인 정책·목표수량은 다음 AI 판매전략 단계에서 설정합니다.</div>
-                    <div className="rounded-xl border border-[#6264A7]/40 bg-[#F7F7FC] p-3">
-                      <div className="flex items-start justify-between gap-3"><div className="flex items-center gap-2"><span className="flex h-8 w-8 items-center justify-center rounded-lg bg-[#6264A7] text-white"><MessageSquareShare className="h-4 w-4" /></span><div><p className="text-[11px] font-black text-slate-950">Microsoft Teams 공유</p><p className="mt-0.5 text-[9px] font-medium text-slate-600">전략 링크와 요약을 담당자 채널에 전달합니다.</p></div></div><span className="rounded-full border border-[#6264A7]/30 bg-white px-2 py-0.5 text-[9px] font-black text-[#4B4D8F]">MOCK</span></div>
-
-                      <label className="mt-3 block text-[10px] font-bold text-slate-700">Teams 채널<div className="relative mt-1.5"><Users className="pointer-events-none absolute left-3 top-1/2 h-3.5 w-3.5 -translate-y-1/2 text-[#6264A7]" /><select value={teamsChannel} onChange={(event) => { setTeamsChannel(event.target.value); setTeamsShareState('IDLE'); }} disabled={teamsShareState === 'SENT'} className="h-9 w-full appearance-none rounded-lg border border-slate-300 bg-white pl-9 pr-8 text-[10px] font-bold text-slate-800 outline-none focus:border-[#6264A7]"><option value="재고전략-통합운영">재고전략-통합운영</option><option value="그리팅몰-MD">그리팅몰-MD</option><option value="백화점 식품관-재고운영">백화점 식품관-재고운영</option></select><ChevronDown className="pointer-events-none absolute right-3 top-1/2 h-3.5 w-3.5 -translate-y-1/2 text-slate-500" /></div></label>
-                      <label className="mt-3 block text-[10px] font-bold text-slate-700">공유 메시지<textarea value={teamsMessage} onChange={(event) => { setTeamsMessage(event.target.value); setTeamsShareState('IDLE'); }} disabled={teamsShareState === 'SENT'} rows={4} className="mt-1.5 w-full resize-none rounded-lg border border-slate-300 bg-white px-3 py-2 text-[10px] font-medium leading-4 text-slate-800 outline-none focus:border-[#6264A7]" /></label>
-
-                      {teamsShareState === 'SENT' && <div className="mt-3 rounded-lg border border-[#6264A7]/30 bg-white p-2.5 text-[9px] leading-4 text-slate-700"><p className="font-black text-[#4B4D8F]">Teams 공유 완료</p><p className="mt-0.5">#{teamsChannel} · {teamsSharedAt} · 전송 이력 저장됨</p></div>}
-                    </div>
-                  </div>
-                )}
+                {saved && <div className="mt-3 rounded-xl border border-emerald-300 bg-emerald-50 p-3 text-[10px] font-semibold leading-4 text-emerald-900"><strong>{bundleCode}</strong> 번들 초안이 저장되었습니다. 판매채널·운영 기간·할인 정책·목표수량은 다음 AI 판매전략 단계에서 설정합니다.</div>}
               </div>
             </aside>
           </div>
@@ -374,7 +366,7 @@ export function InventoryBundleModal({ selectedItems, onClose, onSaved }: Invent
           </div>
           <div className="flex items-center gap-3">
             <button type="button" onClick={onClose} className="rounded-xl px-4 py-2.5 text-xs font-bold text-slate-500 hover:bg-slate-100">취소</button>
-            {!saved ? <button type="button" onClick={saveDraft} disabled={!canSave} className="inline-flex items-center gap-2 rounded-xl bg-[#0F4C3A] px-5 py-2.5 text-xs font-bold text-white shadow-sm transition hover:bg-[#0B392B] disabled:cursor-not-allowed disabled:border disabled:border-slate-300 disabled:bg-slate-200 disabled:text-slate-600"><Save className="h-4 w-4" />번들 초안 저장 ({items.length}개 SKU)</button> : <><button type="button" onClick={shareToTeams} disabled={!teamsMessage.trim() || teamsShareState !== 'IDLE'} className="inline-flex min-w-36 items-center justify-center gap-2 rounded-xl bg-[#6264A7] px-4 py-2.5 text-xs font-bold text-white shadow-sm transition hover:bg-[#4B4D8F] disabled:cursor-not-allowed disabled:border disabled:border-slate-300 disabled:bg-slate-200 disabled:text-slate-600"><Send className="h-4 w-4" />{teamsShareState === 'SENDING' ? 'Teams 전송 중' : teamsShareState === 'SENT' ? 'Teams 공유 완료' : 'Teams로 공유'}</button><button type="button" onClick={() => window.location.assign('/strategy/generate')} className="inline-flex items-center gap-2 rounded-xl bg-[#0F4C3A] px-5 py-2.5 text-xs font-bold text-white shadow-sm transition hover:bg-[#0B392B]"><Sparkles className="h-4 w-4" />AI 판매전략 생성</button></>}
+            {!saved ? <button type="button" onClick={saveDraft} disabled={!canSave} className="inline-flex items-center gap-2 rounded-xl bg-[#0F4C3A] px-5 py-2.5 text-xs font-bold text-white shadow-sm transition hover:bg-[#0B392B] disabled:cursor-not-allowed disabled:border disabled:border-slate-300 disabled:bg-slate-200 disabled:text-slate-600"><Save className="h-4 w-4" />번들 초안 저장 ({items.length}개 SKU)</button> : <button type="button" onClick={() => window.location.assign(`/strategy/generate?targetType=BUNDLE&bundleCode=${bundleCode}`)} className="inline-flex items-center gap-2 rounded-xl bg-[#0F4C3A] px-5 py-2.5 text-xs font-bold text-white shadow-sm transition hover:bg-[#0B392B]"><Sparkles className="h-4 w-4" />AI 판매전략 생성</button>}
           </div>
         </footer>
       </section>
