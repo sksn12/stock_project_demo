@@ -1,244 +1,52 @@
 'use client';
 
-import { useState } from 'react';
+import { useMemo, useState } from 'react';
 import Link from 'next/link';
 import { AppLayout } from '@/components/layout/app-layout';
-import { MOCK_OPTIMIZATION_CASES } from '@/lib/mock-data';
-import {
-  History,
-  Filter,
-  ArrowRight,
-  Sparkles,
-  CheckCircle2,
-  Clock,
-  AlertCircle,
-  Layers,
-  Plus,
-  DollarSign,
-  TrendingUp
-} from 'lucide-react';
+import { STRATEGY_HISTORY_ROWS, type StrategyStatus } from '@/lib/strategy-workbench-data';
+import { ArrowRight, ChevronDown, Search } from 'lucide-react';
+
+const statusMeta: Record<StrategyStatus, { label: string; className: string }> = {
+  APPROVED: { label: '승인완료', className: 'border-emerald-200 bg-emerald-50 text-emerald-800' },
+  READY: { label: '수립완료', className: 'border-sky-200 bg-sky-50 text-sky-800' },
+  GENERATING: { label: '생성중', className: 'border-amber-200 bg-amber-50 text-amber-800' },
+};
 
 export default function StrategyHistoryPage() {
-  const [statusFilter, setStatusFilter] = useState<string>('ALL');
-  const [searchQuery, setSearchQuery] = useState<string>('');
-
-  const proposedCases = MOCK_OPTIMIZATION_CASES.filter((c) =>
-    c.status === 'PENDING' || c.status === 'GENERATING' || c.status === 'COMPLETED' || c.status === 'APPROVED'
-  );
-
-  const displayedCases = proposedCases.filter((c) => {
-    const matchesStatus = statusFilter === 'ALL' || c.status === statusFilter;
-    const matchesSearch =
-      c.title.toLowerCase().includes(searchQuery.toLowerCase()) ||
-      c.id.toLowerCase().includes(searchQuery.toLowerCase()) ||
-      c.targetItems.some((i) => i.name.toLowerCase().includes(searchQuery.toLowerCase()));
-    return matchesStatus && matchesSearch;
-  });
-
-  const totalCases = proposedCases.length;
-  const approvedCases = proposedCases.filter((c) => c.status === 'APPROVED').length;
-  const totalSavedDisposal = proposedCases.reduce((acc, c) => {
-    const opt = c.options[0];
-    return acc + (opt?.savedDisposalCost || 0);
-  }, 0);
-  const totalExpectedMargin = proposedCases.reduce((acc, c) => {
-    const opt = c.options[0];
-    return acc + (opt?.expectedNetContributionMargin || 0);
-  }, 0);
+  const [status, setStatus] = useState<'ALL' | StrategyStatus>('ALL');
+  const [affiliate, setAffiliate] = useState('ALL');
+  const [type, setType] = useState('ALL');
+  const [query, setQuery] = useState('');
+  const rows = useMemo(() => STRATEGY_HISTORY_ROWS.filter((row) => {
+    if (status !== 'ALL' && row.status !== status) return false;
+    if (affiliate !== 'ALL' && row.affiliate !== affiliate) return false;
+    if (type !== 'ALL' && row.type !== type) return false;
+    const normalized = query.trim().toLowerCase();
+    if (!normalized) return true;
+    return [row.id, row.title, row.productName].join(' ').toLowerCase().includes(normalized);
+  }), [affiliate, query, status, type]);
 
   return (
     <AppLayout>
-      <div className="space-y-6 pb-20">
-        {/* Header */}
-        <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-4 bg-white p-6 rounded-2xl border border-slate-200 shadow-xs">
-          <div>
-            <div className="flex items-center gap-2 mb-1">
-              <span className="px-2.5 py-0.5 rounded-full text-xs font-bold bg-[#0F4C3A]/10 text-[#0F4C3A] border border-[#0F4C3A]/30">
-                STRATEGY SELECTION & SIMULATION
-              </span>
-              <span className="text-xs text-slate-500 font-medium">더현대 서울 AI 전략 수립 이력 & 시뮬레이션 목록</span>
-            </div>
-            <h1 className="text-2xl font-bold text-slate-900 tracking-tight">
-              수립 전략 기록 & 대안 비교
-            </h1>
-            <p className="text-xs text-slate-500 mt-1">
-              AI 파이프라인이 생성한 시나리오 대안 목록과 개별 수립 상태를 확인하고 시뮬레이션 워크벤치를 연결합니다.
-            </p>
+      <div className="space-y-5 pb-20">
+        <header><h1 className="text-2xl font-black text-slate-950">전략 기록</h1><p className="mt-2 text-xs text-slate-500">생성된 AI 판매전략의 상태와 핵심 결과를 확인합니다.</p></header>
+
+        <section className="flex flex-col gap-3 rounded-2xl border border-slate-200 bg-white p-4 shadow-sm xl:flex-row xl:items-center xl:justify-between">
+          <div className="flex gap-2 overflow-x-auto">{([['ALL', '전체'], ['APPROVED', '승인완료'], ['READY', '수립완료'], ['GENERATING', '생성중']] as const).map(([id, label]) => <button key={id} type="button" onClick={() => setStatus(id)} className={`rounded-lg px-4 py-2.5 text-xs font-black ${status === id ? 'bg-slate-900 text-white' : 'border border-slate-200 bg-white text-slate-600'}`}>{label}</button>)}</div>
+          <div className="grid gap-2 sm:grid-cols-[170px_140px_300px]">
+            <Select value={affiliate} onChange={setAffiliate} options={[['ALL', '전체 계열사'], ['현대그린푸드', '현대그린푸드']]} label="계열사" />
+            <Select value={type} onChange={setType} options={[['ALL', '전체 구분'], ['개별', '개별'], ['번들', '번들']]} label="구분" />
+            <label className="relative"><span className="sr-only">전략 검색</span><Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-slate-400" /><input value={query} onChange={(event) => setQuery(event.target.value)} placeholder="전략번호, 전략명, 상품명 검색" className="h-11 w-full rounded-xl border border-slate-300 pl-9 pr-3 text-xs font-semibold outline-none focus:border-[#0F4C3A]" /></label>
           </div>
+        </section>
 
-          <div className="flex items-center gap-3 shrink-0">
-            <Link
-              href="/inventory/risk"
-              className="px-4 py-2.5 text-xs font-bold text-white bg-[#0F4C3A] hover:bg-[#0B392B] rounded-xl transition-all shadow-xs flex items-center gap-1.5 cursor-pointer"
-            >
-              <Plus className="w-4 h-4 text-[#9E7C3B]" />
-              신규 AI 전략 수립 시작
-            </Link>
-          </div>
-        </div>
-
-        {/* Top Summary Metrics */}
-        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
-          <div className="bg-white border border-slate-200 rounded-xl p-4 shadow-xs">
-            <div className="flex items-center justify-between text-xs text-slate-500 font-medium mb-1">
-              <span>수립된 전략 케이스</span>
-              <History className="w-4 h-4 text-[#0F4C3A]" />
-            </div>
-            <div className="text-2xl font-bold text-slate-900 font-mono tabular-nums">{totalCases}건</div>
-            <div className="text-[11px] text-slate-500 mt-1">AI 증분 기여이익 연산 완료</div>
-          </div>
-
-          <div className="bg-white border border-slate-200 rounded-xl p-4 shadow-xs">
-            <div className="flex items-center justify-between text-xs text-slate-500 font-medium mb-1">
-              <span>승인 대기/완료</span>
-              <CheckCircle2 className="w-4 h-4 text-[#0F4C3A]" />
-            </div>
-            <div className="text-2xl font-bold text-[#0F4C3A] font-mono tabular-nums">
-              {approvedCases}건 <span className="text-xs text-slate-600 font-normal">({Math.round((approvedCases / totalCases) * 100)}%)</span>
-            </div>
-            <div className="text-[11px] text-slate-500 mt-1">더현대 서울 담당자 승인 대상</div>
-          </div>
-
-          <div className="bg-white border border-slate-200 rounded-xl p-4 shadow-xs">
-            <div className="flex items-center justify-between text-xs text-slate-500 font-medium mb-1">
-              <span>회피 예정 폐기 손실액</span>
-              <DollarSign className="w-4 h-4 text-[#0F4C3A]" />
-            </div>
-            <div className="text-2xl font-bold text-[#0F4C3A] font-mono tabular-nums">
-              ₩{(totalSavedDisposal / 10000).toLocaleString('ko-KR', { maximumFractionDigits: 0 })}만원
-            </div>
-            <div className="text-[11px] text-slate-500 mt-1">소각/폐기 손실 방어 총액</div>
-          </div>
-
-          <div className="bg-white border border-slate-200 rounded-xl p-4 shadow-xs">
-            <div className="flex items-center justify-between text-xs text-slate-500 font-medium mb-1">
-              <span>예상 증분 기여이익</span>
-              <TrendingUp className="w-4 h-4 text-[#0F4C3A]" />
-            </div>
-            <div className="text-2xl font-bold text-slate-900 font-mono tabular-nums">
-              ₩{(totalExpectedMargin / 10000).toLocaleString('ko-KR', { maximumFractionDigits: 0 })}만원
-            </div>
-            <div className="text-[11px] text-slate-500 mt-1">순마진 방어 누적 시뮬레이션</div>
-          </div>
-        </div>
-
-        {/* Filter & Search Bar */}
-        <div className="bg-white border border-slate-200 rounded-xl p-4 flex flex-col md:flex-row md:items-center justify-between gap-3 shadow-xs">
-          <div className="flex items-center gap-1.5 overflow-x-auto">
-            {[
-              { id: 'ALL', label: '전체 보기' },
-              { id: 'APPROVED', label: '승인완료 (APPROVED)' },
-              { id: 'COMPLETED', label: '수립완료 (COMPLETED)' },
-              { id: 'GENERATING', label: '생성중 (GENERATING)' },
-            ].map((tab) => (
-              <button
-                key={tab.id}
-                onClick={() => setStatusFilter(tab.id)}
-                className={`px-3 py-1.5 rounded-lg text-xs font-semibold whitespace-nowrap transition-all cursor-pointer ${
-                  statusFilter === tab.id
-                    ? 'bg-[#0F4C3A] text-white shadow-xs'
-                    : 'bg-white border border-slate-200 text-slate-600 hover:bg-slate-100'
-                }`}
-              >
-                {tab.label}
-              </button>
-            ))}
-          </div>
-
-          <div className="relative w-full md:w-64">
-            <input
-              type="text"
-              placeholder="케이스 ID, 품목명, 점포 검색..."
-              value={searchQuery}
-              onChange={(e) => setSearchQuery(e.target.value)}
-              className="w-full bg-white border border-slate-200 rounded-lg py-1.5 pl-3 pr-8 text-xs text-slate-900 placeholder-slate-400 focus:outline-none focus:border-[#0F4C3A]"
-            />
-            <Filter className="w-3.5 h-3.5 text-slate-400 absolute right-3 top-2.5" />
-          </div>
-        </div>
-
-        {/* Proposed Cases List */}
-        <div className="space-y-4">
-          {displayedCases.length === 0 ? (
-            <div className="p-12 text-center bg-white border border-slate-200 rounded-xl text-slate-500 text-xs">
-              <AlertCircle className="w-8 h-8 text-slate-400 mx-auto mb-2" />
-              <span>조건에 일치하는 수립 전략 케이스가 없습니다.</span>
-            </div>
-          ) : (
-            displayedCases.map((optCase) => {
-              const mainItem = optCase.targetItems[0];
-              const selectedOpt = optCase.options.find((o) => o.id === optCase.selectedOptionId) || optCase.options[0];
-
-              return (
-                <div
-                  key={optCase.id}
-                  className="bg-white border border-slate-200 hover:border-[#0F4C3A] rounded-xl p-5 transition-all shadow-2xs group"
-                >
-                  <div className="flex flex-col lg:flex-row lg:items-center justify-between gap-5">
-                    <div className="space-y-2 flex-1">
-                      <div className="flex flex-wrap items-center gap-2">
-                        <span className="font-mono text-[11px] font-bold text-[#0F4C3A] bg-emerald-50 px-2.5 py-0.5 rounded border border-emerald-200">
-                          {optCase.id}
-                        </span>
-                        <span className="text-[10px] font-bold px-2 py-0.5 rounded bg-sky-50 text-sky-700 border border-sky-200">
-                          {optCase.status}
-                        </span>
-                        {optCase.isBundle && (
-                          <span className="text-[10px] font-bold px-2 py-0.5 rounded bg-amber-50 text-amber-800 border border-amber-200 flex items-center gap-1">
-                            <Layers className="w-3 h-3" />
-                            AI 번들 조합
-                          </span>
-                        )}
-                        <span className="text-[11px] text-slate-400 font-mono ml-auto lg:ml-0">
-                          {optCase.createdAt}
-                        </span>
-                      </div>
-
-                      <div>
-                        <h3 className="text-base font-bold text-slate-900 group-hover:text-[#0F4C3A] transition-colors">
-                          {optCase.title}
-                        </h3>
-                        <p className="text-xs text-slate-500 mt-0.5">
-                          {mainItem.name} ({mainItem.store} | {mainItem.purchaseType} | 현재고 {mainItem.quantity}개)
-                        </p>
-                      </div>
-
-                      {selectedOpt && (
-                        <div className="p-3 bg-slate-50 rounded-xl border border-slate-200 text-xs space-y-1">
-                          <div className="text-slate-800 font-bold flex items-center gap-1">
-                            <Sparkles className="w-3.5 h-3.5 text-[#0F4C3A]" />
-                            <span>{selectedOpt.name}</span>
-                          </div>
-                          <p className="text-slate-600 leading-relaxed text-[11px] line-clamp-1">
-                            {selectedOpt.reasoning}
-                          </p>
-                        </div>
-                      )}
-                    </div>
-
-                    <div className="flex flex-col sm:flex-row lg:flex-col items-start sm:items-end justify-between gap-3 border-t lg:border-t-0 pt-3 lg:pt-0 border-slate-100 lg:pl-5 lg:border-l shrink-0 min-w-[200px]">
-                      <div className="space-y-0.5 text-left sm:text-right font-mono">
-                        <span className="text-[11px] text-slate-500 block font-sans">예상 증분 기여이익</span>
-                        <span className="text-base font-bold text-[#0F4C3A]">
-                          ₩{(selectedOpt?.expectedNetContributionMargin || 0).toLocaleString()}원
-                        </span>
-                      </div>
-
-                      <Link
-                        href={`/strategy/${optCase.id}`}
-                        className="w-full py-2 px-3.5 text-xs font-bold rounded-lg bg-[#0F4C3A] hover:bg-[#0B392B] text-white transition-all flex items-center justify-center gap-1 shadow-2xs cursor-pointer"
-                      >
-                        <span>대안 비교 & 시뮬레이션</span>
-                        <ArrowRight className="w-3.5 h-3.5" />
-                      </Link>
-                    </div>
-                  </div>
-                </div>
-              );
-            })
-          )}
-        </div>
+        <section className="overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-sm">
+          <div className="overflow-x-auto"><table className="w-full min-w-[1050px] text-left text-xs"><thead className="border-b border-slate-200 bg-slate-100 text-[10px] font-black text-slate-500"><tr><th className="px-4 py-4">전략번호</th><th className="px-4 py-4">구분</th><th className="px-4 py-4">전략명</th><th className="px-4 py-4">계열사</th><th className="px-4 py-4">카테고리</th><th className="px-4 py-4">상품명</th><th className="px-4 py-4">상태</th><th className="px-4 py-4">생성일자 ↓</th><th className="px-4 py-4 text-right">상세</th></tr></thead><tbody>{rows.map((row) => <tr key={row.id} className="border-b border-slate-100 last:border-0 hover:bg-emerald-50/40"><td className="px-4 py-5 font-mono font-black text-slate-900">{row.id}</td><td className="px-4 py-5"><span className={`rounded-full px-2 py-1 text-[9px] font-black ${row.type === '번들' ? 'bg-violet-50 text-violet-700' : 'bg-slate-100 text-slate-600'}`}>{row.type}</span></td><td className="px-4 py-5 font-black text-slate-900">{row.title}</td><td className="px-4 py-5 text-slate-600">{row.affiliate}</td><td className="px-4 py-5 text-slate-600">{row.category}</td><td className="px-4 py-5 font-semibold text-slate-700">{row.productName}</td><td className="px-4 py-5"><span className={`rounded-full border px-2 py-1 text-[9px] font-black ${statusMeta[row.status].className}`}>{statusMeta[row.status].label}</span></td><td className="px-4 py-5 tabular-nums text-slate-500">{row.createdAt}</td><td className="px-4 py-5 text-right"><Link href={`/strategy/${row.caseId}`} aria-label={`${row.id} 상세`} className="inline-flex h-8 w-8 items-center justify-center rounded-lg text-[#0F4C3A] hover:bg-emerald-100"><ArrowRight className="h-4 w-4" /></Link></td></tr>)}{rows.length === 0 && <tr><td colSpan={9} className="px-4 py-16 text-center text-sm text-slate-500">조건에 맞는 전략 기록이 없습니다.</td></tr>}</tbody></table></div>
+          <div className="flex items-center justify-between border-t border-slate-200 px-4 py-3 text-[11px] text-slate-500"><span>총 {rows.length}건</span><div className="flex gap-1"><button className="h-8 w-8 rounded-lg border border-slate-200">‹</button><button className="h-8 w-8 rounded-lg bg-slate-900 font-black text-white">1</button><button className="h-8 w-8 rounded-lg border border-slate-200">›</button></div></div>
+        </section>
       </div>
     </AppLayout>
   );
 }
+
+function Select({ value, onChange, options, label }: { value: string; onChange: (value: string) => void; options: Array<[string, string]>; label: string }) { return <label className="relative"><span className="sr-only">{label}</span><select value={value} onChange={(event) => onChange(event.target.value)} className="h-11 w-full appearance-none rounded-xl border border-slate-300 bg-white px-3 pr-8 text-xs font-bold text-slate-700 outline-none focus:border-[#0F4C3A]">{options.map(([id, text]) => <option key={id} value={id}>{text}</option>)}</select><ChevronDown className="pointer-events-none absolute right-3 top-1/2 h-4 w-4 -translate-y-1/2 text-slate-400" /></label>; }

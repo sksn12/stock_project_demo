@@ -16,11 +16,15 @@ function StrategyGenerateContent() {
   const productId = searchParams.get('productId');
   const skuId = searchParams.get('skuId');
   const channelId = searchParams.get('channelId');
+  const targetType = searchParams.get('targetType') === 'BUNDLE' ? 'BUNDLE' : 'SKU';
+  const bundleCode = searchParams.get('bundleCode');
 
   const targetProducts = MOCK_INVENTORY_ITEMS.filter((item) => selectedIds.includes(item.id));
   const selectedProduct = INVENTORY_PRODUCTS.find((product) => product.id === productId);
   const selectedSku = selectedProduct?.skus.find((sku) => sku.id === skuId);
-  const nextQuery = selectedProduct && selectedSku
+  const nextQuery = targetType === 'BUNDLE'
+    ? `?${new URLSearchParams({ targetType: 'BUNDLE', bundleCode: bundleCode ?? 'BND-20260806-001' }).toString()}`
+    : selectedProduct && selectedSku
     ? `?${new URLSearchParams({ productId: selectedProduct.id, skuId: selectedSku.id, ...(channelId ? { channelId } : {}) }).toString()}`
     : '';
   const recommendation = selectedSku ? getTransferRecommendation(selectedSku.id) : undefined;
@@ -50,7 +54,9 @@ function StrategyGenerateContent() {
         </div>
         <h1 className="text-2xl font-bold text-slate-900">AI 재고 최적화 전략 생성</h1>
         <p className="text-xs text-slate-500">
-          {selectedProduct && selectedSku
+          {targetType === 'BUNDLE'
+            ? `${bundleCode ?? 'BND-20260806-001'} 번들 초안의 구성품 재고와 가격·채널 조건을 분석해 판매전략을 생성합니다.`
+            : selectedProduct && selectedSku
             ? `${selectedProduct.name} · ${selectedSku.optionLabel} SKU의 판매처별 재고와 수요를 비교해 재할당·RT 우선 전략을 생성합니다.`
             : targetProducts.length > 0
             ? `선택된 ${targetProducts.length}개 위험 재고 품목에 대해 과거 3년 반응 데이터와 폐기 회피 비용을 시뮬레이션합니다.`
@@ -65,6 +71,13 @@ function StrategyGenerateContent() {
             <div><p className="font-bold text-slate-900">[{selectedProduct.affiliate}] {selectedProduct.name}</p><p className="mt-1 text-xs text-slate-600">{selectedSku.optionLabel} · {selectedSku.code}</p></div>
             <div className="text-right text-xs"><p className="font-bold text-slate-900">재고 {selectedSku.availableStock.toLocaleString()}{selectedSku.unit}</p><p className="mt-1 text-slate-500">판매가 ₩{selectedSku.sellingPrice.toLocaleString()}</p></div>
           </div>
+        </div>
+      )}
+
+      {targetType === 'BUNDLE' && (
+        <div className="rounded-xl border border-violet-200 bg-violet-50/70 p-4">
+          <p className="text-xs font-bold text-violet-800">선택 번들 초안</p>
+          <div className="mt-2 flex flex-wrap items-center justify-between gap-3"><div><p className="font-bold text-slate-900">그리팅 추천 번들 초안</p><p className="mt-1 font-mono text-xs text-slate-600">{bundleCode ?? 'BND-20260806-001'} · 구성 SKU 2개</p></div><div className="text-right text-xs"><p className="font-bold text-slate-900">최대 구성 45세트</p><p className="mt-1 text-slate-500">번들 판매가 ₩49,900</p></div></div>
         </div>
       )}
 

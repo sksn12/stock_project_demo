@@ -488,6 +488,14 @@ export const MOCK_OPTIMIZATION_CASES: OptimizationCase[] = [
     createdAt: '2026-07-24 10:15',
     status: 'APPROVED',
     selectedOptionId: 'OPT-01-A',
+    executionStatus: 'EXECUTING',
+    executionStartDate: '2026-08-01',
+    executionEndDate: '2026-08-12',
+    actualSalesQty: 74,
+    actualNetContributionMargin: 15240000,
+    actualRemainingQty: 71,
+    approverName: '김영만 수석 MD',
+    approvedAt: '2026-07-31 16:40',
     options: [
       {
         id: 'OPT-01-A',
